@@ -7,9 +7,11 @@ export async function POST(req: NextRequest) {
   const email    = (form.get('email')    as string)?.trim()
   const password = (form.get('password') as string)
 
-  const origin = req.headers.get('x-forwarded-host')
-    ? `${req.headers.get('x-forwarded-proto') ?? 'http'}://${req.headers.get('x-forwarded-host')}`
-    : req.nextUrl.origin
+  // Use the Host header so redirects work regardless of how the app is accessed
+  // (localhost, Tailscale IP, or a domain name)
+  const host  = req.headers.get('x-forwarded-host') ?? req.headers.get('host') ?? 'localhost:3001'
+  const proto = req.headers.get('x-forwarded-proto') ?? 'http'
+  const origin = `${proto}://${host}`
 
   if (!email || !password) {
     return NextResponse.redirect(`${origin}/login?error=Email+and+password+are+required`, { status: 303 })
@@ -21,7 +23,7 @@ export async function POST(req: NextRequest) {
     const cookieStore = await cookies()
     cookieStore.set('pb_auth', auth.token, {
       httpOnly: true,
-      secure:   process.env.NODE_ENV === 'production',
+      secure:   false,  // plain HTTP over Tailscale WireGuard — Secure flag rejected by browsers
       sameSite: 'lax',
       path:     '/',
       maxAge:   60 * 60 * 24 * 7,

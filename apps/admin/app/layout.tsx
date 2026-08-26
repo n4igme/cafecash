@@ -40,6 +40,10 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                   className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-slate-700 hover:bg-slate-100 transition-colors">
                   📋 Orders
                 </a>
+                <a href="/reports"
+                  className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-slate-700 hover:bg-slate-100 transition-colors">
+                  📊 Reports
+                </a>
                 <a href="/settings"
                   className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-slate-700 hover:bg-slate-100 transition-colors">
                   ⚙️ Settings
