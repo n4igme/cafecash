@@ -1,0 +1,38 @@
+# ── Stage 1: dependencies ──────────────────────────────────────────
+FROM node:20-alpine AS deps
+WORKDIR /app
+
+COPY package.json package-lock.json ./
+COPY apps/admin/package.json ./apps/admin/
+
+RUN npm ci --workspace=apps/admin --include-workspace-root
+
+# ── Stage 2: build ─────────────────────────────────────────────────
+FROM node:20-alpine AS builder
+WORKDIR /app
+
+COPY --from=deps /app/node_modules ./node_modules
+COPY packages/ ./packages/
+COPY apps/admin/ ./apps/admin/
+COPY package.json ./
+
+ARG NEXT_PUBLIC_API_URL=http://100.85.162.13:8091
+ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
+
+WORKDIR /app/apps/admin
+RUN npm run build
+
+# ── Stage 3: runner ────────────────────────────────────────────────
+FROM node:20-alpine AS runner
+WORKDIR /app
+
+ENV NODE_ENV=production
+
+# Need root node_modules for the hoisted `next` binary
+COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/apps/admin/.next ./.next
+COPY --from=builder /app/apps/admin/package.json ./
+
+EXPOSE 3000
+
+CMD ["./node_modules/.bin/next", "start", "-p", "3000"]

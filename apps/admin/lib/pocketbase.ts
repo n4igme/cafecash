@@ -20,10 +20,11 @@ export const pb = new Proxy({} as PocketBase, {
 })
 
 // ── Server instance (server components / server actions) ─────────────────────
-// Creates a fresh PocketBase instance per request, loaded with the auth token
-// from the httpOnly cookie. Never reused across requests.
+// In Docker: PB_SERVER_URL=http://pocketbase:8090 (internal network)
+// In dev:    falls back to NEXT_PUBLIC_API_URL
 export async function getServerPB(): Promise<PocketBase> {
-  const client = new PocketBase(API_URL)
+  const serverUrl = process.env.PB_SERVER_URL ?? API_URL
+  const client = new PocketBase(serverUrl)
   client.autoCancellation(false)
   const cookieStore = await cookies()
   const token = cookieStore.get('pb_auth')?.value

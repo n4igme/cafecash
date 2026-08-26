@@ -52,10 +52,10 @@ export default async function OrdersPage() {
                   </td>
                   <td className="px-6 py-3 font-semibold text-indigo-600">{formatRupiah(o.total)}</td>
                   <td className="px-6 py-3 text-slate-500 text-xs">
-                    {new Date(o.created).toLocaleString('id-ID', {
+                    {o.created ? new Date(o.created).toLocaleString('id-ID', {
                       day: '2-digit', month: 'short', year: 'numeric',
                       hour: '2-digit', minute: '2-digit',
-                    })}
+                    }) : '—'}
                   </td>
                   <td className="px-6 py-3">
                     <CancelOrderButton

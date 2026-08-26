@@ -2,8 +2,6 @@
 import { cookies } from 'next/headers'
 import PocketBase from 'pocketbase'
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL!
-
 export async function login(
   _prev: { error: string } | { success: true } | null,
   formData: FormData
@@ -15,7 +13,7 @@ export async function login(
     return { error: 'Email and password are required.' }
   }
 
-  const pb = new PocketBase(API_URL)
+  const pb = new PocketBase(process.env.PB_SERVER_URL ?? process.env.NEXT_PUBLIC_API_URL!)
   try {
     const auth = await pb.collection('users').authWithPassword(email, password)
     const cookieStore = await cookies()

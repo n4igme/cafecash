@@ -20,7 +20,7 @@ function buildChartData(orders: Order[]) {
   }
 
   return days.map(({ label, date }) => {
-    const dayOrders = orders.filter(o => o.created.slice(0, 10) === date)
+  const dayOrders = orders.filter(o => o.created && o.created.slice(0, 10) === date)
     return {
       day:     label,
       revenue: dayOrders.reduce((s, o) => s + o.total, 0),
@@ -45,7 +45,7 @@ export default async function DashboardPage() {
     pb.collection('products').getFullList<Product>(),
   ])
 
-  const todayOrders  = ordersRes.filter(o => o.created.slice(0, 10) === todayDate)
+  const todayOrders  = ordersRes.filter(o => o.created && o.created.slice(0, 10) === todayDate)
   const todayRevenue = todayOrders.reduce((s, o) => s + o.total, 0)
   const totalRevenue = ordersRes.reduce((s, o) => s + o.total, 0)
   const chartData    = buildChartData(ordersRes)
@@ -99,7 +99,7 @@ export default async function DashboardPage() {
                   <td className="px-6 py-3 text-slate-700">{orderItems.length} items</td>
                   <td className="px-6 py-3 font-semibold text-indigo-600">{formatRupiah(o.total)}</td>
                   <td className="px-6 py-3 text-slate-500">
-                    {new Date(o.created).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}
+                    {o.created ? new Date(o.created).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) : '—'}
                   </td>
                   <td className="px-6 py-3">
                     <span className="px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700">
