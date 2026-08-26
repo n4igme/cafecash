@@ -1,0 +1,69 @@
+[
+  {
+    "id": "pbc_products0001",
+    "name": "products",
+    "type": "base",
+    "system": false,
+    "fields": [
+      { "name": "name",         "type": "text",   "required": true, "presentable": true },
+      { "name": "price",        "type": "number", "required": true, "min": 0 },
+      { "name": "category",     "type": "text",   "required": true },
+      { "name": "image_url",    "type": "url",    "required": false },
+      { "name": "is_available", "type": "bool",   "required": false }
+    ],
+    "listRule":   "",
+    "viewRule":   "",
+    "createRule": "@request.auth.id != ''",
+    "updateRule": "@request.auth.id != ''",
+    "deleteRule": "@request.auth.id != ''"
+  },
+  {
+    "id": "pbc_orders00001",
+    "name": "orders",
+    "type": "base",
+    "system": false,
+    "fields": [
+      { "name": "total",  "type": "number", "required": true, "min": 0 },
+      { "name": "status", "type": "select", "required": true, "options": { "maxSelect": 1, "values": ["pending","paid","cancelled"] } },
+      { "name": "note",   "type": "text",   "required": false }
+    ],
+    "listRule":   "@request.auth.id != ''",
+    "viewRule":   "@request.auth.id != ''",
+    "createRule": "",
+    "updateRule": "@request.auth.id != ''",
+    "deleteRule": "@request.auth.id != ''"
+  },
+  {
+    "id": "pbc_orderitems1",
+    "name": "order_items",
+    "type": "base",
+    "system": false,
+    "fields": [
+      { "name": "order",        "type": "relation", "required": true,  "options": { "collectionId": "pbc_orders00001", "cascadeDelete": true,  "maxSelect": 1 } },
+      { "name": "product",      "type": "relation", "required": false, "options": { "collectionId": "pbc_products0001", "cascadeDelete": false, "maxSelect": 1 } },
+      { "name": "product_name", "type": "text",     "required": true },
+      { "name": "price",        "type": "number",   "required": true, "min": 0 },
+      { "name": "quantity",     "type": "number",   "required": true, "min": 1 }
+    ],
+    "listRule":   "@request.auth.id != ''",
+    "viewRule":   "@request.auth.id != ''",
+    "createRule": "",
+    "updateRule": "@request.auth.id != ''",
+    "deleteRule": "@request.auth.id != ''"
+  },
+  {
+    "id": "pbc_settings0001",
+    "name": "settings",
+    "type": "base",
+    "system": false,
+    "fields": [
+      { "name": "store_name", "type": "text",  "required": true },
+      { "name": "qris_image", "type": "file",  "required": false, "options": { "maxSelect": 1, "maxSize": 5242880, "mimeTypes": ["image/png","image/jpeg","image/webp"] } }
+    ],
+    "listRule":   "",
+    "viewRule":   "",
+    "createRule": "@request.auth.id != ''",
+    "updateRule": "@request.auth.id != ''",
+    "deleteRule": "@request.auth.id != ''"
+  }
+]

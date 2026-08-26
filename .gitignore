@@ -1,0 +1,31 @@
+# Dependencies
+node_modules/
+
+# Build outputs
+.next/
+.expo/
+dist/
+
+# PocketBase runtime
+pocketbase
+pb_data/
+pb_migrations/
+
+# Logs & backups
+logs/
+backups/
+
+# Env files (keep examples)
+.env
+.env.local
+.env.*.local
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Debug scripts (dev only)
+scripts/debug_dashboard.py
+
+# Supabase (legacy — migrated to PocketBase)
+supabase/

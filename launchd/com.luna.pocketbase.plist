@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.luna.pocketbase</string>
+
+  <key>ProgramArguments</key>
+  <array>
+    <string>/usr/bin/caffeinate</string>
+    <string>-i</string>
+    <string>LUNA_POS_ROOT/pocketbase</string>
+    <string>serve</string>
+    <string>--http=0.0.0.0:8090</string>
+    <string>--dir=LUNA_POS_ROOT/pb_data</string>
+  </array>
+
+  <key>WorkingDirectory</key>
+  <string>LUNA_POS_ROOT</string>
+
+  <!-- Start on load and keep alive if it crashes -->
+  <key>RunAtLoad</key>
+  <true/>
+  <key>KeepAlive</key>
+  <true/>
+
+  <!-- Logging -->
+  <key>StandardOutPath</key>
+  <string>LUNA_POS_ROOT/logs/pocketbase.log</string>
+  <key>StandardErrorPath</key>
+  <string>LUNA_POS_ROOT/logs/pocketbase.error.log</string>
+
+  <!-- Throttle restarts: wait 10s before restarting after a crash -->
+  <key>ThrottleInterval</key>
+  <integer>10</integer>
+</dict>
+</plist>

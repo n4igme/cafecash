@@ -1,0 +1,13 @@
+{
+  "name": "luna-pos",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "tablet": "npm run start --workspace=apps/tablet",
+    "admin": "npm run dev --workspace=apps/admin"
+  }
+}
