@@ -1,7 +1,9 @@
 #!/bin/bash
-# Build CafeCash debug APK — applies all gradle fixes after prebuild
+# Build CafeCash APK — debug or release
+# Usage: bash scripts/build-debug.sh [release]
 set -e
 
+BUILD_TYPE="${1:-debug}"
 TABLET_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 ROOT_DIR="$(cd "$TABLET_DIR/../.." && pwd)"
 ANDROID="$TABLET_DIR/android"
@@ -85,16 +87,22 @@ else:
     print("  ✓ publishing block already patched")
 PYEOF
 
-echo "▶ Step 5: build APK"
+echo "▶ Step 5: build APK ($BUILD_TYPE)"
 cd "$ANDROID"
 export JAVA_HOME="$JAVA_HOME"
 export ANDROID_HOME="$HOME/Library/Android/sdk"
 ./gradlew --stop 2>/dev/null || true
-./gradlew assembleDebug
 
-APK="$ANDROID/app/build/outputs/apk/debug/app-debug.apk"
+if [ "$BUILD_TYPE" = "release" ]; then
+    ./gradlew assembleRelease
+    APK="$ANDROID/app/build/outputs/apk/release/app-release.apk"
+else
+    ./gradlew assembleDebug
+    APK="$ANDROID/app/build/outputs/apk/debug/app-debug.apk"
+fi
+
 echo ""
-echo "✅ BUILD SUCCESS: $APK"
+echo "✅ BUILD SUCCESS ($BUILD_TYPE): $APK"
 echo ""
 echo "▶ Installing on device 3da73143..."
 "$ADB" -s 3da73143 install -r "$APK" && echo "✅ Installed on device"
