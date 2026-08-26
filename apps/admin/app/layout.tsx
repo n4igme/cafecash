@@ -5,8 +5,8 @@ import { decodeToken } from '../lib/pocketbase'
 import LogoutButton from './components/LogoutButton'
 
 export const metadata: Metadata = {
-  title: 'Luna POS Admin',
-  description: 'Admin dashboard for Luna POS',
+  title: 'CafeCash Admin',
+  description: 'Admin dashboard for CafeCash POS',
 }
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
@@ -23,7 +23,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           {email && (
             <aside className="w-56 bg-white border-r border-slate-200 flex flex-col">
               <div className="px-6 py-5 border-b border-slate-100">
-                <h1 className="text-lg font-bold text-slate-800">🌙 Luna POS</h1>
+                <h1 className="text-lg font-bold text-slate-800">☕ CafeCash</h1>
                 <p className="text-xs text-slate-400 mt-0.5">Admin Dashboard</p>
               </div>
 

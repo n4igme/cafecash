@@ -28,8 +28,8 @@ export default function LoginPage() {
       <div className="w-full max-w-sm">
 
         <div className="text-center mb-8">
-          <div className="text-4xl mb-3">🌙</div>
-          <h1 className="text-2xl font-bold text-slate-800">Luna POS</h1>
+          <div className="text-4xl mb-3">☕</div>
+          <h1 className="text-2xl font-bold text-slate-800">CafeCash</h1>
           <p className="text-sm text-slate-400 mt-1">Admin Dashboard</p>
         </div>
 
@@ -87,7 +87,7 @@ export default function LoginPage() {
         </div>
 
         <p className="text-center text-xs text-slate-400 mt-6">
-          Luna POS · Self-hosted · Tailscale
+          CafeCash · Self-hosted · Tailscale
         </p>
       </div>
     </div>

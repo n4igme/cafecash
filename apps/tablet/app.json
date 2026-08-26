@@ -1,11 +1,11 @@
 {
   "expo": {
-    "name": "Luna POS",
-    "slug": "luna-pos",
+    "name": "CafeCash",
+    "slug": "cafecash",
     "version": "1.0.0",
     "orientation": "landscape",
     "icon": "./assets/icon.png",
-    "scheme": "lunapos",
+    "scheme": "cafecash",
     "userInterfaceStyle": "light",
     "splash": {
       "image": "./assets/splash.png",
@@ -13,7 +13,7 @@
       "backgroundColor": "#ffffff"
     },
     "android": {
-      "package": "com.luna.pos",
+      "package": "com.cafecash.pos",
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"

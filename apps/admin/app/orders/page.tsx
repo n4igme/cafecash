@@ -1,6 +1,8 @@
 export const dynamic = 'force-dynamic'
+import { cookies } from 'next/headers'
 import { getServerPB } from '../../lib/pocketbase'
 import type { Order, OrderItem } from '../../../../packages/types'
+import CancelOrderButton from '../components/CancelOrderButton'
 
 const formatRupiah = (n: number) =>
   new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(n)
@@ -8,9 +10,13 @@ const formatRupiah = (n: number) =>
 export default async function OrdersPage() {
   const pb = await getServerPB()
 
+  // Read token for client component hydration
+  const cookieStore = await cookies()
+  const token = cookieStore.get('pb_auth')?.value ?? null
+
   const orders = await pb.collection('orders').getFullList<Order>({
     sort:   '-id',
-    expand: 'order_items(order)',
+    expand: 'order_items_via_order',
     batch:  100,
   })
 
@@ -25,13 +31,13 @@ export default async function OrdersPage() {
               <th className="text-left px-6 py-3 text-slate-500 font-medium">Order</th>
               <th className="text-left px-6 py-3 text-slate-500 font-medium">Items</th>
               <th className="text-left px-6 py-3 text-slate-500 font-medium">Total</th>
-              <th className="text-left px-6 py-3 text-slate-500 font-medium">Status</th>
               <th className="text-left px-6 py-3 text-slate-500 font-medium">Date & Time</th>
+              <th className="text-left px-6 py-3 text-slate-500 font-medium">Status</th>
             </tr>
           </thead>
           <tbody>
             {orders.map(o => {
-              const orderItems: OrderItem[] = (o.expand as any)?.['order_items(order)'] ?? []
+              const orderItems: OrderItem[] = (o.expand as any)?.['order_items_via_order'] ?? []
               return (
                 <tr key={o.id} className="border-b border-slate-50 hover:bg-slate-50">
                   <td className="px-6 py-3 font-mono text-xs text-slate-500">{o.id.slice(0, 8)}…</td>
@@ -45,22 +51,18 @@ export default async function OrdersPage() {
                     </div>
                   </td>
                   <td className="px-6 py-3 font-semibold text-indigo-600">{formatRupiah(o.total)}</td>
-                  <td className="px-6 py-3">
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                      o.status === 'paid'
-                        ? 'bg-green-100 text-green-700'
-                        : o.status === 'cancelled'
-                        ? 'bg-red-100 text-red-600'
-                        : 'bg-yellow-100 text-yellow-700'
-                    }`}>
-                      {o.status}
-                    </span>
-                  </td>
                   <td className="px-6 py-3 text-slate-500 text-xs">
                     {new Date(o.created).toLocaleString('id-ID', {
                       day: '2-digit', month: 'short', year: 'numeric',
                       hour: '2-digit', minute: '2-digit',
                     })}
+                  </td>
+                  <td className="px-6 py-3">
+                    <CancelOrderButton
+                      orderId={o.id}
+                      status={o.status}
+                      token={token}
+                    />
                   </td>
                 </tr>
               )

@@ -58,7 +58,7 @@ export default function POSScreen() {
       {/* Left: Product Grid */}
       <View style={styles.left}>
         <View style={styles.header}>
-          <Text style={styles.logo}>🌙 Luna POS</Text>
+          <Text style={styles.logo}>☕ CafeCash</Text>
         </View>
 
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.tabs}>
