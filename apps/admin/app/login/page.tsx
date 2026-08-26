@@ -1,27 +1,9 @@
-'use client'
-import { useState, useTransition } from 'react'
-import { useRouter } from 'next/navigation'
-import { login } from './actions'
-
-export default function LoginPage() {
-  const router = useRouter()
-  const [error,   setError]   = useState<string | null>(null)
-  const [pending, startTransition] = useTransition()
-
-  function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault()
-    const formData = new FormData(e.currentTarget)
-    setError(null)
-    startTransition(async () => {
-      const result = await login(null, formData)
-      if ('error' in result) {
-        setError(result.error)
-      } else {
-        router.push('/')
-        router.refresh()
-      }
-    })
-  }
+export default function LoginPage({
+  searchParams,
+}: {
+  searchParams?: { error?: string }
+}) {
+  const error = searchParams?.error
 
   return (
     <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
@@ -36,7 +18,7 @@ export default function LoginPage() {
         <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-8">
           <h2 className="text-lg font-semibold text-slate-700 mb-6">Sign in</h2>
 
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form method="POST" action="/api/login" className="space-y-4">
             <div>
               <label htmlFor="email" className="block text-sm font-medium text-slate-600 mb-1">
                 Email
@@ -47,7 +29,7 @@ export default function LoginPage() {
                 type="email"
                 autoComplete="email"
                 required
-                placeholder="admin@luna.pos"
+                placeholder="admin@cafecash.pos"
                 className="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm
                            focus:outline-none focus:ring-2 focus:ring-indigo-400 transition"
               />
@@ -71,17 +53,16 @@ export default function LoginPage() {
 
             {error && (
               <div className="bg-red-50 border border-red-100 text-red-600 text-sm rounded-lg px-4 py-3">
-                {error}
+                {decodeURIComponent(error)}
               </div>
             )}
 
             <button
               type="submit"
-              disabled={pending}
               className="w-full py-2.5 bg-indigo-600 text-white rounded-lg text-sm font-semibold
-                         hover:bg-indigo-700 disabled:opacity-60 transition-colors mt-2"
+                         hover:bg-indigo-700 transition-colors mt-2"
             >
-              {pending ? 'Signing in…' : 'Sign in'}
+              Sign in
             </button>
           </form>
         </div>
