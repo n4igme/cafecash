@@ -24,8 +24,9 @@ export interface CartItem {
 export interface Order extends PBRecord {
   total: number
   status: 'pending' | 'paid' | 'cancelled'
+  payment_method?: 'qris' | 'cash' | 'split'
+  payment_slip?: string   // PocketBase file field
   note?: string
-  // populated when fetched with expand: 'order_items_via_order'
   expand?: {
     order_items_via_order?: OrderItem[]
   }
