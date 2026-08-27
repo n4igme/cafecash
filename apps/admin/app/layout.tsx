@@ -9,22 +9,31 @@ export const metadata: Metadata = {
   description: 'Admin dashboard for CafeCash POS',
 }
 
+interface StoreSettings { store_name: string; logo_emoji: string; logo: string; id: string }
+
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const cookieStore = await cookies()
   const token = cookieStore.get('pb_auth')?.value
   const email = cookieStore.get('pb_email')?.value
 
-  // Fetch store settings for branding (best-effort — fallback to defaults)
-  let storeName = 'CafeCash'
-  let logoEmoji = '☕'
+  let storeName  = 'CafeCash'
+  let logoEmoji  = '☕'
+  let logoUrl: string | null = null
+  const apiUrl = process.env.PB_SERVER_URL ?? process.env.NEXT_PUBLIC_API_URL!
+
   if (token) {
     try {
-      const pb = new PocketBase(process.env.PB_SERVER_URL ?? process.env.NEXT_PUBLIC_API_URL!)
+      const pb = new PocketBase(apiUrl)
       pb.autoCancellation(false)
       pb.authStore.save(token, null)
-      const s = await pb.collection('settings').getFirstListItem<{ store_name: string; logo_emoji: string }>('')
+      const s = await pb.collection('settings').getFirstListItem<StoreSettings>('')
       if (s.store_name) storeName = s.store_name
       if (s.logo_emoji) logoEmoji = s.logo_emoji
+      if (s.logo) {
+        // Use public URL (NEXT_PUBLIC_API_URL) so browser can load the image
+        const publicApi = process.env.NEXT_PUBLIC_API_URL!
+        logoUrl = `${publicApi}/api/files/settings/${s.id}/${s.logo}`
+      }
     } catch {}
   }
 
@@ -35,8 +44,17 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           {email && (
             <aside className="w-56 bg-white border-r border-slate-200 flex flex-col">
               <div className="px-6 py-5 border-b border-slate-100">
-                <h1 className="text-lg font-bold text-slate-800">{logoEmoji} {storeName}</h1>
-                <p className="text-xs text-slate-400 mt-0.5">Admin Dashboard</p>
+                <div className="flex items-center gap-2.5">
+                  {logoUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={logoUrl} alt={storeName}
+                      className="w-7 h-7 object-contain rounded" />
+                  ) : (
+                    <span className="text-xl">{logoEmoji}</span>
+                  )}
+                  <h1 className="text-base font-bold text-slate-800 truncate">{storeName}</h1>
+                </div>
+                <p className="text-xs text-slate-400 mt-0.5 ml-9">Admin Dashboard</p>
               </div>
 
               <nav className="flex-1 p-4 space-y-1">

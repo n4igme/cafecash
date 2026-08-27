@@ -20,7 +20,7 @@ function getProductImageUrl(product: Product): string | null {
   return null
 }
 
-interface StoreSettings { store_name: string; logo_emoji: string }
+interface StoreSettings { store_name: string; logo_emoji: string; logo: string; id: string; collectionId: string }
 
 export default function POSScreen() {
   const router = useRouter()
@@ -30,6 +30,7 @@ export default function POSScreen() {
   const [activeCategory,setActiveCategory]= useState('All')
   const [storeName,     setStoreName]     = useState('CafeCash')
   const [logoEmoji,     setLogoEmoji]     = useState('☕')
+  const [logoUrl,       setLogoUrl]       = useState<string | null>(null)
 
   useEffect(() => {
     // Fetch store settings
@@ -37,6 +38,7 @@ export default function POSScreen() {
       .then(s => {
         if (s.store_name) setStoreName(s.store_name)
         if (s.logo_emoji) setLogoEmoji(s.logo_emoji)
+        if (s.logo) setLogoUrl(`${API_URL}/api/files/${s.collectionId}/${s.id}/${s.logo}`)
       })
       .catch(() => {})
 
@@ -78,7 +80,12 @@ export default function POSScreen() {
       {/* Left: Product Grid */}
       <View style={styles.left}>
         <View style={styles.header}>
-          <Text style={styles.logo}>{logoEmoji} {storeName}</Text>
+          {logoUrl ? (
+            <Image source={{ uri: logoUrl }} style={styles.logoImage} resizeMode="contain" />
+          ) : (
+            <Text style={styles.logo}>{logoEmoji} {storeName}</Text>
+          )}
+          {logoUrl && <Text style={styles.logoName}>{storeName}</Text>}
         </View>
 
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.tabs}>
@@ -202,8 +209,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20, paddingVertical: 14,
     borderBottomWidth: 1, borderBottomColor: '#e2e8f0',
     backgroundColor: '#fff',
+    flexDirection: 'row', alignItems: 'center',
   },
   logo: { fontSize: 20, fontWeight: '700', color: '#1e293b' },
+  logoImage: { width: 36, height: 36, borderRadius: 6 },
+  logoName: { fontSize: 16, fontWeight: '700', color: '#1e293b', marginLeft: 8 },
   tabs: { paddingHorizontal: 16, paddingVertical: 10, flexGrow: 0 },
   tab: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20, marginRight: 8, backgroundColor: '#e2e8f0' },
   tabActive: { backgroundColor: '#6366f1' },
