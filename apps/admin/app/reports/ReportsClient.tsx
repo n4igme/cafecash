@@ -88,7 +88,11 @@ export default function ReportsClient({ token }: { token: string | null }) {
   }, [])
 
   const from = startOf(range)
-  const filtered = orders.filter(o => o.created && new Date(o.created) >= from)
+  const filtered = orders.filter(o => {
+    if (range === 'all') return true          // all time: include everything
+    if (!o.created) return false              // no timestamp: exclude from period filters
+    return new Date(o.created) >= from
+  })
 
   const omset      = filtered.reduce((s, o) => s + o.total, 0)
   const orderCount = filtered.length
