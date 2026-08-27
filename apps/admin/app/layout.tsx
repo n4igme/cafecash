@@ -42,6 +42,10 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                   className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-slate-700 hover:bg-slate-100 transition-colors">
                   ⚙️ Settings
                 </a>
+                <a href="/users"
+                  className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-slate-700 hover:bg-slate-100 transition-colors">
+                  👤 Users
+                </a>
               </nav>
 
               {/* User footer */}
