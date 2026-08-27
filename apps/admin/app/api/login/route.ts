@@ -23,7 +23,15 @@ export async function POST(req: NextRequest) {
     const cookieStore = await cookies()
     cookieStore.set('pb_auth', auth.token, {
       httpOnly: true,
-      secure:   false,  // plain HTTP over Tailscale WireGuard — Secure flag rejected by browsers
+      secure:   false,
+      sameSite: 'lax',
+      path:     '/',
+      maxAge:   60 * 60 * 24 * 7,
+    })
+    // Store email separately so layout can display it without JWT decode
+    cookieStore.set('pb_email', auth.record.email ?? '', {
+      httpOnly: false,
+      secure:   false,
       sameSite: 'lax',
       path:     '/',
       maxAge:   60 * 60 * 24 * 7,

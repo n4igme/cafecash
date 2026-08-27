@@ -7,5 +7,6 @@ export async function POST(req: NextRequest) {
   const origin = `${proto}://${host}`
   const cookieStore = await cookies()
   cookieStore.delete('pb_auth')
+  cookieStore.delete('pb_email')
   return NextResponse.redirect(`${origin}/login`, { status: 303 })
 }

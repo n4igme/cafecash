@@ -1,7 +1,6 @@
 import type { Metadata } from 'next'
 import './globals.css'
 import { cookies } from 'next/headers'
-import { decodeToken } from '../lib/pocketbase'
 import LogoutButton from './components/LogoutButton'
 
 export const metadata: Metadata = {
@@ -12,8 +11,7 @@ export const metadata: Metadata = {
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const cookieStore = await cookies()
   const token = cookieStore.get('pb_auth')?.value
-  const user  = token ? decodeToken(token) : null
-  const email = user?.email as string | undefined
+  const email = cookieStore.get('pb_email')?.value
 
   return (
     <html lang="en">
