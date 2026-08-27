@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import {
   View, Text, FlatList, TouchableOpacity,
-  StyleSheet, ScrollView, ActivityIndicator,
+  StyleSheet, ScrollView, ActivityIndicator, Image,
 } from 'react-native'
 import { useRouter } from 'expo-router'
 import { SafeAreaView } from 'react-native-safe-area-context'
@@ -10,7 +10,15 @@ import { useCart } from '../store/cart'
 import { formatRupiah } from '../lib/format'
 import type { Product } from '../../../packages/types'
 
+const API_URL = process.env.EXPO_PUBLIC_API_URL!
 const CATEGORIES = ['All', 'Coffee', 'Non-Coffee', 'Drinks', 'Food']
+
+function getProductImageUrl(product: Product): string | null {
+  if (product.image) {
+    return `${API_URL}/api/files/${product.collectionId}/${product.id}/${product.image}`
+  }
+  return null
+}
 
 export default function POSScreen() {
   const router = useRouter()
@@ -20,18 +28,17 @@ export default function POSScreen() {
   const [activeCategory, setActiveCategory] = useState('All')
 
   useEffect(() => {
-    // Initial fetch
     pb.collection('products')
       .getFullList<Product>({ filter: 'is_available = true', sort: 'category,name' })
       .then(data => { setProducts(data); setLoading(false) })
-      .catch(() => setLoading(false))
+      .catch(err => {
+        console.error('[CafeCash] products fetch error:', JSON.stringify(err))
+        setLoading(false)
+      })
 
-    // Realtime subscription — live-update when admin changes products
     pb.collection('products').subscribe<Product>('*', ({ action, record }) => {
       setProducts(prev => {
-        if (action === 'create') {
-          return record.is_available ? [...prev, record] : prev
-        }
+        if (action === 'create') return record.is_available ? [...prev, record] : prev
         if (action === 'update') {
           if (!record.is_available) return prev.filter(p => p.id !== record.id)
           const idx = prev.findIndex(p => p.id === record.id)
@@ -85,10 +92,19 @@ export default function POSScreen() {
             contentContainerStyle={styles.grid}
             renderItem={({ item }) => {
               const qty = getQty(item.id)
+              const imgUrl = getProductImageUrl(item)
               return (
                 <TouchableOpacity style={styles.card} onPress={() => add(item)}>
-                  <View style={styles.cardEmoji}>
-                    <Text style={{ fontSize: 32 }}>☕</Text>
+                  <View style={styles.cardImage}>
+                    {imgUrl ? (
+                      <Image
+                        source={{ uri: imgUrl }}
+                        style={styles.productImage}
+                        resizeMode="cover"
+                      />
+                    ) : (
+                      <Text style={{ fontSize: 32 }}>☕</Text>
+                    )}
                   </View>
                   <Text style={styles.cardName} numberOfLines={2}>{item.name}</Text>
                   <Text style={styles.cardPrice}>{formatRupiah(item.price)}</Text>
@@ -188,10 +204,12 @@ const styles = StyleSheet.create({
     shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 4,
     shadowOffset: { width: 0, height: 2 }, elevation: 2, position: 'relative',
   },
-  cardEmoji: {
-    width: 60, height: 60, borderRadius: 30,
-    backgroundColor: '#f1f5f9', alignItems: 'center', justifyContent: 'center', marginBottom: 8,
+  cardImage: {
+    width: 60, height: 60, borderRadius: 10,
+    backgroundColor: '#f1f5f9', alignItems: 'center', justifyContent: 'center',
+    marginBottom: 8, overflow: 'hidden',
   },
+  productImage: { width: 60, height: 60, borderRadius: 10 },
   cardName: { fontSize: 13, fontWeight: '600', color: '#1e293b', textAlign: 'center' },
   cardPrice: { fontSize: 12, color: '#6366f1', marginTop: 4, fontWeight: '500' },
   badge: {

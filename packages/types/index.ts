@@ -1,7 +1,9 @@
 // PocketBase base record fields (all collections have these)
 export interface PBRecord {
   id: string        // 15-char string (PocketBase format)
-  created: string   // ISO datetime (was created_at in Supabase)
+  collectionId: string
+  collectionName: string
+  created: string   // ISO datetime
   updated: string
 }
 
@@ -9,7 +11,8 @@ export interface Product extends PBRecord {
   name: string
   price: number     // in IDR (e.g. 20000)
   category: string
-  image_url?: string
+  image?: string    // PocketBase file field (filename, not URL)
+  image_url?: string // legacy URL field
   is_available: boolean
 }
 
