@@ -36,6 +36,15 @@ PROPS="$ANDROID/gradle.properties"
 grep -q "android.kotlinVersion" "$PROPS" || echo "android.kotlinVersion=1.9.25" >> "$PROPS"
 echo "  ✓ gradle.properties patched"
 
+echo "▶ Step 3b: patch AndroidManifest — usesCleartextTraffic=true"
+MANIFEST="$ANDROID/app/src/main/AndroidManifest.xml"
+if ! grep -q "usesCleartextTraffic" "$MANIFEST"; then
+  sed -i '' 's/android:supportsRtl="true"/android:supportsRtl="true" android:usesCleartextTraffic="true"/' "$MANIFEST"
+  echo "  ✓ usesCleartextTraffic added"
+else
+  echo "  ✓ usesCleartextTraffic already present"
+fi
+
 echo "▶ Step 4: patch ExpoModulesCorePlugin.gradle"
 # Fix default fallback version
 sed -i '' 's/: "1.9.24"/: "1.9.25"/' "$EXPO_PLUGIN"
