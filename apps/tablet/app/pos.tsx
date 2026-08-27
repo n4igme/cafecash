@@ -20,14 +20,27 @@ function getProductImageUrl(product: Product): string | null {
   return null
 }
 
+interface StoreSettings { store_name: string; logo_emoji: string }
+
 export default function POSScreen() {
   const router = useRouter()
   const { items, add, increment, decrement, total, clear } = useCart()
-  const [products, setProducts] = useState<Product[]>([])
-  const [loading, setLoading] = useState(true)
-  const [activeCategory, setActiveCategory] = useState('All')
+  const [products,      setProducts]      = useState<Product[]>([])
+  const [loading,       setLoading]       = useState(true)
+  const [activeCategory,setActiveCategory]= useState('All')
+  const [storeName,     setStoreName]     = useState('CafeCash')
+  const [logoEmoji,     setLogoEmoji]     = useState('☕')
 
   useEffect(() => {
+    // Fetch store settings
+    pb.collection('settings').getFirstListItem<StoreSettings>('')
+      .then(s => {
+        if (s.store_name) setStoreName(s.store_name)
+        if (s.logo_emoji) setLogoEmoji(s.logo_emoji)
+      })
+      .catch(() => {})
+
+    // Fetch products
     pb.collection('products')
       .getFullList<Product>({ filter: 'is_available = true', sort: 'category,name' })
       .then(data => { setProducts(data); setLoading(false) })
@@ -65,7 +78,7 @@ export default function POSScreen() {
       {/* Left: Product Grid */}
       <View style={styles.left}>
         <View style={styles.header}>
-          <Text style={styles.logo}>☕ CafeCash</Text>
+          <Text style={styles.logo}>{logoEmoji} {storeName}</Text>
         </View>
 
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.tabs}>
