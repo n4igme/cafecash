@@ -20,8 +20,9 @@ backups/
 .env.local
 .env.*.local
 
-# OS
-.DS_Store
+# Credentials (never commit)
+.credentials
+
 Thumbs.db
 
 # Debug scripts (dev only)

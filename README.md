@@ -180,13 +180,23 @@ Tailscale VPN is the network security boundary — only devices on the Tailscale
 
 ## Credentials
 
-> ⚠️ **Change all default credentials before use.** Do not commit real passwords to version control.
+> ⚠️ **Never commit real credentials to version control.**
 
-Default credentials set during first-time setup:
+After first-time setup, your credentials are stored in `.credentials` (gitignored):
+
+```bash
+cat .credentials
+```
+
+This file is created locally and never pushed to GitHub. If it doesn't exist yet, create it:
+
+```bash
+cp .credentials.example .credentials
+# Then fill in your actual passwords
+```
 
 | Role | Description |
 |---|---|
-| PB Superuser | PocketBase `/_/` admin — schema, users, system config |
+| PB Superuser | PocketBase `/_/` — schema, users, system config |
 | Admin user | Full access to admin dashboard |
-
-See `.env.example` files for environment variable reference.
+| Staff user | Full access to admin dashboard |
