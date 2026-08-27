@@ -1,131 +1,155 @@
-# cafecash
+# CafeCash
 
-The cashier app for the coffee shop — self-hosted POS system built with PocketBase, Expo/React Native, and Next.js.
+Self-hosted POS system for cafés — Android tablet cashier + Next.js web admin + PocketBase backend.
 
 ## Stack
 
 | Layer | Tech |
 |---|---|
-| Backend | PocketBase v0.40.1 (single binary, SQLite) |
+| Backend | PocketBase v0.40.1 (single Go binary, SQLite) |
 | Tablet POS | Expo 52 + React Native 0.76 + expo-router |
 | Admin Web | Next.js 15 + Tailwind CSS |
-| Network | Tailscale VPN mesh |
+| Network | Tailscale VPN |
+| Deployment | Docker Compose |
 | State (tablet) | Zustand |
 
-## Structure
+## Project Structure
 
 ```
 cafecash/
 ├── apps/
-│   ├── tablet/          # Expo Android APK (com.luna.pos)
+│   ├── tablet/          # Expo Android APK (com.cafecash.pos)
+│   │   ├── app/         # expo-router screens (pos, checkout)
+│   │   ├── lib/         # pocketbase client, format utils
+│   │   ├── store/       # Zustand cart store
+│   │   ├── assets/      # Icons, splash, QRIS placeholder
+│   │   ├── android/     # Native Android project (prebuild output)
+│   │   └── scripts/     # build-debug.sh (debug + release APK)
 │   └── admin/           # Next.js admin dashboard
+│       ├── app/         # Pages: dashboard, products, orders, users, settings
+│       ├── lib/         # PocketBase client
+│       └── middleware.ts
 ├── packages/
 │   └── types/           # Shared TypeScript types
 ├── scripts/
 │   ├── create_collections.py   # One-shot PocketBase schema setup
-│   ├── e2e_test.py             # End-to-end API test (11 tests)
-│   ├── backup.sh               # Daily pb_data backup
-│   └── debug_dashboard.py      # Dev debug helper
-├── launchd/             # macOS launchd plists (auto-start on reboot)
-├── pb_collections.json  # PocketBase schema reference
-├── start.sh             # Dev: start PocketBase + admin together
-└── install-services.sh  # Prod: install launchd services
+│   ├── add_autodate_fields.py  # Add created/updated to collections
+│   ├── add_product_image.py    # Add image field to products
+│   └── e2e_test.py             # End-to-end API test (11 tests)
+├── launchd/             # macOS launchd plists (bare-metal alternative to Docker)
+├── Dockerfile.pocketbase
+├── Dockerfile.admin
+├── docker-compose.yml
+└── start.sh             # Dev: start PocketBase + admin without Docker
 ```
 
-## Quick Start (Development)
+## Quick Start (Docker — recommended)
 
-### 1. Download PocketBase
+### 1. Prerequisites
+- Docker Desktop running
+- Tailscale installed and connected on Mac + Android tablet
 
-```bash
-# macOS arm64
-curl -L -o pocketbase.zip https://github.com/pocketbase/pocketbase/releases/download/v0.40.1/pocketbase_0.40.1_darwin_arm64.zip
-unzip pocketbase.zip && chmod +x pocketbase
-```
-
-### 2. Set env vars
+### 2. Configure environment
 
 ```bash
-# Admin web
 cp apps/admin/.env.example apps/admin/.env.local
-# Set: NEXT_PUBLIC_API_URL=http://127.0.0.1:8091
+# Edit: NEXT_PUBLIC_API_URL=http://<tailscale-ip>:8091
 
-# Tablet
 cp apps/tablet/.env.example apps/tablet/.env
-# Set: EXPO_PUBLIC_API_URL=http://<tailscale-ip>:8091
+# Edit: EXPO_PUBLIC_API_URL=http://<tailscale-ip>:8091
 ```
 
-### 3. Install deps
-
+Get your Tailscale IP:
 ```bash
-npm install
+tailscale ip -4
 ```
 
-### 4. Start everything
+### 3. Start services
 
 ```bash
-./start.sh
+docker compose up -d
 ```
 
-Opens:
-- PocketBase API → `http://localhost:8091`
-- PocketBase Admin UI → `http://localhost:8091/_/`
-- Admin Dashboard → `http://localhost:3000`
+| Service | URL |
+|---|---|
+| PocketBase API | `http://localhost:8091` |
+| PocketBase Admin UI | `http://localhost:8091/_/` |
+| Admin Dashboard | `http://localhost:3001` |
 
-### 5. First-time setup
+### 4. First-time setup
 
 ```bash
-# Create superuser
+# Create PocketBase superuser
 ./pocketbase superuser create admin@yourdomain.com yourpassword
 
 # Create collections + seed products
 PYTHONPATH="" python3 scripts/create_collections.py
 
-# Create a staff user via PocketBase Admin UI at /_/
-# or via API (see scripts/create_collections.py)
+# Add autodate fields (created/updated)
+PYTHONPATH="" python3 scripts/add_autodate_fields.py
+
+# Add product image field
+PYTHONPATH="" python3 scripts/add_product_image.py
 ```
 
-## Production (macOS launchd)
+Then open `http://localhost:3001` → sign in → go to Settings → set store name, logo, upload QRIS.
+
+### 5. Build + install tablet APK
 
 ```bash
-# Build admin + install all 3 services (PocketBase, admin, daily backup)
-./install-services.sh
+# Release build (standalone, no Metro needed)
+bash apps/tablet/scripts/build-debug.sh release
 
-# Check status
-./install-services.sh status
-
-# Stop all
-./install-services.sh stop
+# Debug build (requires Metro running)
+bash apps/tablet/scripts/build-debug.sh
 ```
 
-Services installed:
-- `com.luna.pocketbase` — PocketBase with caffeinate (prevents sleep)
-- `com.luna.admin` — Next.js admin in production mode
-- `com.luna.backup` — Daily 03:00 backup of `pb_data/` → `backups/`
+## Admin Dashboard
+
+| Page | Features |
+|---|---|
+| 📊 Dashboard | Revenue/orders stats, period filter, 7-day chart, monthly trend, product sales, recent orders |
+| 🛍️ Products | Add/edit/delete, image upload, toggle availability |
+| 📋 Orders | Full history, cancel, mark paid |
+| 👤 Users | Add/edit/delete admin users |
+| ⚙️ Settings | Store name, logo emoji, QRIS image upload |
+
+## Tablet POS
+
+| Feature | Detail |
+|---|---|
+| Product grid | 3-column, category filters |
+| Realtime | Products update live via SSE |
+| Cart | Add/increment/decrement |
+| Checkout | QRIS from settings (no rebuild to change) |
+| Payment | "Payment Received" → saves to DB → returns to POS |
 
 ## RBAC
 
-| Collection | Tablet (anon) | Admin (authenticated) |
+| | Tablet (anon) | Admin (authenticated) |
 |---|---|---|
-| `products` | list, view | full CRUD |
-| `orders` | create only | list, view, update, delete |
-| `order_items` | create only | list, view, update, delete |
-| `settings` | list, view | full CRUD |
+| products | read | full CRUD |
+| orders | create | full CRUD |
+| order_items | create | full CRUD |
+| settings | read | full CRUD |
 
-Tailscale is the network security boundary — only Tailscale nodes can reach the backend.
-
-## Build Tablet APK
+## Bare-metal (without Docker)
 
 ```bash
-cd apps/tablet
-npx eas build --platform android --profile preview
+./start.sh  # starts PocketBase :8091 + Next.js admin :3000
+
+# Or install as macOS launchd services (auto-start on reboot)
+./install-services.sh
+./install-services.sh status
+./install-services.sh stop
 ```
 
-## Backup
+## Credentials
 
-```bash
-# Manual backup
-./scripts/backup.sh
+| Role | Email | Password |
+|---|---|---|
+| PB Superuser | `admin@luna.pos` | `Admin@2026!` |
+| Admin user | `admin@cafecash.pos` | `CafeCash@2026!` |
+| Staff user | `staff@cafecash.pos` | `Staff@2026!` |
 
-# Backups stored at: ./backups/<timestamp>/pb_data/
-# Auto-pruned to last 7 backups
-```
+> ⚠️ Change these before any public deployment.

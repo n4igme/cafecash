@@ -27,5 +27,8 @@ Thumbs.db
 # Debug scripts (dev only)
 scripts/debug_dashboard.py
 
-# Supabase (legacy — migrated to PocketBase)
-supabase/
+# Android build outputs
+apps/tablet/android/app/build/
+apps/tablet/android/.gradle/
+apps/tablet/android/build/
+apps/tablet/android/app/release/
