@@ -48,11 +48,11 @@ export default function CheckoutScreen() {
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
         quality: 0.8,
       })
-      if (!result.canceled && result.assets?.[0]?.uri) {
-        setSlipUri(result.assets[0].uri)
-      }
-    } catch (e: any) {
-      Alert.alert('Gallery error', e?.message ?? 'Failed to open gallery')
+      if (!result.canceled && result.assets?.[0]?.uri) setSlipUri(result.assets[0].uri)
+      else if (result.canceled) {} // user cancelled — fine
+    } catch {
+      // expo-image-picker native module unavailable on this device
+      // silently skip — slip is optional
     }
   }
 
@@ -64,11 +64,9 @@ export default function CheckoutScreen() {
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
         quality: 0.8,
       })
-      if (!result.canceled && result.assets?.[0]?.uri) {
-        setSlipUri(result.assets[0].uri)
-      }
-    } catch (e: any) {
-      Alert.alert('Camera error', e?.message ?? 'Failed to open camera')
+      if (!result.canceled && result.assets?.[0]?.uri) setSlipUri(result.assets[0].uri)
+    } catch {
+      // Camera unavailable — silently skip
     }
   }
 
@@ -228,8 +226,8 @@ export default function CheckoutScreen() {
             </View>
             <PhotoPicker label="Take receipt photo" />
             <TouchableOpacity
-              style={[styles.confirmBtn, (!slipUri || saving) && styles.confirmBtnDisabled]}
-              onPress={() => confirmPayment('qris')} disabled={!slipUri || saving}>
+              style={[styles.confirmBtn, saving && styles.confirmBtnDisabled]}
+              onPress={() => confirmPayment('qris')} disabled={saving}>
               {saving ? <ActivityIndicator color="#fff" /> : <Text style={styles.confirmBtnText}>✓ Confirm Payment</Text>}
             </TouchableOpacity>
             <TouchableOpacity style={styles.cancelBtn} onPress={() => setStep('method')}>
@@ -281,8 +279,8 @@ export default function CheckoutScreen() {
             </View>
             <PhotoPicker label="QRIS receipt photo" />
             <TouchableOpacity
-              style={[styles.confirmBtn, (!slipUri || !note.trim() || saving) && styles.confirmBtnDisabled]}
-              onPress={() => confirmPayment('split')} disabled={!slipUri || !note.trim() || saving}>
+              style={[styles.confirmBtn, (!note.trim() || saving) && styles.confirmBtnDisabled]}
+              onPress={() => confirmPayment('split')} disabled={!note.trim() || saving}>
               {saving ? <ActivityIndicator color="#fff" /> : <Text style={styles.confirmBtnText}>✓ Confirm Split Payment</Text>}
             </TouchableOpacity>
             <TouchableOpacity style={styles.cancelBtn} onPress={() => setStep('method')}>
