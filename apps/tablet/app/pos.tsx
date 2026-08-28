@@ -94,7 +94,10 @@ export default function POSScreen() {
   const [saving, setSaving] = useState(false)
 
   const saveOrder = async () => {
-    if (!orderId) return
+    if (!orderId) {
+      Alert.alert('Error', 'No order ID — go back and start a new order.')
+      return
+    }
     if (items.length === 0) {
       Alert.alert('No items', 'Add at least one item before saving.')
       return
@@ -119,7 +122,11 @@ export default function POSScreen() {
       await pb.collection('orders').update(orderId, { total: total() })
       router.replace('/active-orders')
     } catch (e: any) {
-      Alert.alert('Error', e?.message ?? 'Failed to save order')
+      const msg = e?.response?.message ?? e?.message ?? 'Failed to save order'
+      const url = e?.url ?? ''
+      const status = e?.status ?? ''
+      Alert.alert('Save Error', `${msg}\nstatus: ${status}\nurl: ${url}\norderId: ${orderId}`)
+      console.error('[CafeCash] saveOrder error:', JSON.stringify(e))
     } finally {
       setSaving(false)
     }
