@@ -1,5 +1,5 @@
 'use client'
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState, useRef, useMemo } from 'react'
 import PocketBase from 'pocketbase'
 import type { Product } from '../../../../packages/types'
 
@@ -45,8 +45,8 @@ function buildStockMap(
 }
 
 function StockBadge({ servings }: { servings: number | null | undefined }) {
-  if (servings === undefined) return null           // no recipe loaded yet
-  if (servings === null)      return null           // no recipe = unlimited, don't show
+  if (servings === undefined) return null
+  if (servings === null)      return null
   if (servings <= 0)  return (
     <span className="ml-1.5 px-1.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-600">
       ⚫ Out of stock
@@ -58,6 +58,14 @@ function StockBadge({ servings }: { servings: number | null | undefined }) {
     </span>
   )
   return null
+}
+
+type SortKey = 'name' | 'category' | 'price' | 'status'
+type SortDir = 'asc' | 'desc'
+
+function SortIcon({ col, sortKey, sortDir }: { col: SortKey; sortKey: SortKey; sortDir: SortDir }) {
+  if (col !== sortKey) return <span className="ml-1 text-slate-300">↕</span>
+  return <span className="ml-1 text-indigo-500">{sortDir === 'asc' ? '↑' : '↓'}</span>
 }
 
 export default function ProductsClient({ token }: { token: string | null }) {
@@ -74,6 +82,10 @@ export default function ProductsClient({ token }: { token: string | null }) {
   const [saving,       setSaving]       = useState(false)
   const [imagePreview, setImagePreview] = useState<string | null>(null)
   const [stockMap,     setStockMap]     = useState<StockMap>({})
+  const [search,       setSearch]       = useState('')
+  const [filterCat,    setFilterCat]    = useState('All')
+  const [sortKey,      setSortKey]      = useState<SortKey>('name')
+  const [sortDir,      setSortDir]      = useState<SortDir>('asc')
   const fileRef = useRef<HTMLInputElement>(null)
 
   const load = async () => {
@@ -82,7 +94,6 @@ export default function ProductsClient({ token }: { token: string | null }) {
     setProducts(data)
     setLoading(false)
 
-    // Fetch stock map in background
     Promise.all([
       pb.collection('recipes').getFullList<{ product: string; ingredient: string; qty_needed: number }>({ fields: 'product,ingredient,qty_needed' }),
       pb.collection('ingredients').getFullList<{ id: string; stock_qty: number }>({ fields: 'id,stock_qty' }),
@@ -92,6 +103,45 @@ export default function ProductsClient({ token }: { token: string | null }) {
   }
 
   useEffect(() => { load() }, [])
+
+  const toggleSort = (key: SortKey) => {
+    if (sortKey === key) setSortDir(d => d === 'asc' ? 'desc' : 'asc')
+    else { setSortKey(key); setSortDir('asc') }
+  }
+
+  const filtered = useMemo(() => {
+    let result = [...products]
+
+    // Category filter
+    if (filterCat !== 'All') result = result.filter(p => p.category === filterCat)
+
+    // Search
+    const q = search.trim().toLowerCase()
+    if (q) result = result.filter(p =>
+      p.name.toLowerCase().includes(q) ||
+      p.category.toLowerCase().includes(q) ||
+      String(p.price).includes(q)
+    )
+
+    // Sort
+    result.sort((a, b) => {
+      let cmp = 0
+      if (sortKey === 'name')     cmp = a.name.localeCompare(b.name)
+      if (sortKey === 'category') cmp = a.category.localeCompare(b.category)
+      if (sortKey === 'price')    cmp = a.price - b.price
+      if (sortKey === 'status')   cmp = Number(b.is_available) - Number(a.is_available)
+      return sortDir === 'asc' ? cmp : -cmp
+    })
+
+    return result
+  }, [products, search, filterCat, sortKey, sortDir])
+
+  // Category counts
+  const catCounts = useMemo(() => {
+    const counts: Record<string, number> = { All: products.length }
+    for (const cat of CATEGORIES) counts[cat] = products.filter(p => p.category === cat).length
+    return counts
+  }, [products])
 
   const openNew = () => {
     setForm(EMPTY)
@@ -156,6 +206,37 @@ export default function ProductsClient({ token }: { token: string | null }) {
         </button>
       </div>
 
+      {/* Search + category filter */}
+      <div className="flex flex-col gap-3 mb-4">
+        <div className="flex gap-3 items-center">
+          <div className="relative flex-1 max-w-sm">
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">🔍</span>
+            <input
+              type="text" placeholder="Search products..."
+              value={search} onChange={e => setSearch(e.target.value)}
+              className="w-full pl-9 pr-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
+            />
+          </div>
+          <span className="text-sm text-slate-400 ml-auto">
+            {filtered.length} of {products.length} products
+          </span>
+        </div>
+
+        {/* Category tabs */}
+        <div className="flex gap-2">
+          {['All', ...CATEGORIES].map(cat => (
+            <button key={cat} onClick={() => setFilterCat(cat)}
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                filterCat === cat
+                  ? 'bg-indigo-600 text-white'
+                  : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'
+              }`}>
+              {cat} ({catCounts[cat] ?? 0})
+            </button>
+          ))}
+        </div>
+      </div>
+
       {loading ? (
         <div className="text-slate-400 text-center py-20">Loading...</div>
       ) : (
@@ -164,15 +245,27 @@ export default function ProductsClient({ token }: { token: string | null }) {
             <thead>
               <tr className="border-b border-slate-100 bg-slate-50">
                 <th className="text-left px-4 py-3 text-slate-500 font-medium w-16">Image</th>
-                <th className="text-left px-4 py-3 text-slate-500 font-medium">Name</th>
-                <th className="text-left px-4 py-3 text-slate-500 font-medium">Category</th>
-                <th className="text-left px-4 py-3 text-slate-500 font-medium">Price</th>
-                <th className="text-left px-4 py-3 text-slate-500 font-medium">Status</th>
+                <th className="text-left px-4 py-3 text-slate-500 font-medium cursor-pointer select-none hover:text-slate-700"
+                  onClick={() => toggleSort('name')}>
+                  Name <SortIcon col="name" sortKey={sortKey} sortDir={sortDir} />
+                </th>
+                <th className="text-left px-4 py-3 text-slate-500 font-medium cursor-pointer select-none hover:text-slate-700"
+                  onClick={() => toggleSort('category')}>
+                  Category <SortIcon col="category" sortKey={sortKey} sortDir={sortDir} />
+                </th>
+                <th className="text-left px-4 py-3 text-slate-500 font-medium cursor-pointer select-none hover:text-slate-700"
+                  onClick={() => toggleSort('price')}>
+                  Price <SortIcon col="price" sortKey={sortKey} sortDir={sortDir} />
+                </th>
+                <th className="text-left px-4 py-3 text-slate-500 font-medium cursor-pointer select-none hover:text-slate-700"
+                  onClick={() => toggleSort('status')}>
+                  Status <SortIcon col="status" sortKey={sortKey} sortDir={sortDir} />
+                </th>
                 <th className="text-left px-4 py-3 text-slate-500 font-medium">Actions</th>
               </tr>
             </thead>
             <tbody>
-              {products.map(p => {
+              {filtered.map(p => {
                 const imgUrl = productImageUrl(pb, p)
                 return (
                   <tr key={p.id} className="border-b border-slate-50 hover:bg-slate-50">
@@ -216,8 +309,10 @@ export default function ProductsClient({ token }: { token: string | null }) {
               })}
             </tbody>
           </table>
-          {products.length === 0 && (
-            <div className="px-6 py-12 text-center text-slate-400">No products yet</div>
+          {filtered.length === 0 && (
+            <div className="px-6 py-12 text-center text-slate-400">
+              {search || filterCat !== 'All' ? 'No products match your search' : 'No products yet'}
+            </div>
           )}
         </div>
       )}
