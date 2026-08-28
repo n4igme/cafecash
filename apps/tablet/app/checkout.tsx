@@ -5,7 +5,7 @@ import {
 } from 'react-native'
 import { useRouter } from 'expo-router'
 import { SafeAreaView } from 'react-native-safe-area-context'
-import * as ImagePicker from 'expo-image-picker'
+import * as ImagePicker from 'react-native-image-picker'
 import { pb } from '../lib/pocketbase'
 import { useCart } from '../store/cart'
 import { formatRupiah } from '../lib/format'
@@ -39,35 +39,27 @@ export default function CheckoutScreen() {
       .finally(() => setLoadingQris(false))
   }, [])
 
-  // Each picker is a standalone async function — no nested Alert callbacks
+  // react-native-image-picker — handles permissions internally, works on all Android ROMs
   const pickFromGallery = async () => {
-    try {
-      const perm = await ImagePicker.requestMediaLibraryPermissionsAsync()
-      if (!perm.granted) { Alert.alert('Permission needed', 'Allow gallery in Settings.'); return }
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        quality: 0.8,
-      })
-      if (!result.canceled && result.assets?.[0]?.uri) setSlipUri(result.assets[0].uri)
-      else if (result.canceled) {} // user cancelled — fine
-    } catch {
-      // expo-image-picker native module unavailable on this device
-      // silently skip — slip is optional
-    }
+    ImagePicker.launchImageLibrary(
+      { mediaType: 'photo', quality: 0.8 },
+      (response) => {
+        if (!response.didCancel && !response.errorCode && response.assets?.[0]?.uri) {
+          setSlipUri(response.assets[0].uri!)
+        }
+      }
+    )
   }
 
   const pickFromCamera = async () => {
-    try {
-      const perm = await ImagePicker.requestCameraPermissionsAsync()
-      if (!perm.granted) { Alert.alert('Permission needed', 'Allow camera in Settings.'); return }
-      const result = await ImagePicker.launchCameraAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        quality: 0.8,
-      })
-      if (!result.canceled && result.assets?.[0]?.uri) setSlipUri(result.assets[0].uri)
-    } catch {
-      // Camera unavailable — silently skip
-    }
+    ImagePicker.launchCamera(
+      { mediaType: 'photo', quality: 0.8, saveToPhotos: false },
+      (response) => {
+        if (!response.didCancel && !response.errorCode && response.assets?.[0]?.uri) {
+          setSlipUri(response.assets[0].uri!)
+        }
+      }
+    )
   }
 
   const confirmPayment = async (method: 'qris' | 'cash' | 'split') => {
@@ -226,8 +218,8 @@ export default function CheckoutScreen() {
             </View>
             <PhotoPicker label="Take receipt photo" />
             <TouchableOpacity
-              style={[styles.confirmBtn, saving && styles.confirmBtnDisabled]}
-              onPress={() => confirmPayment('qris')} disabled={saving}>
+              style={[styles.confirmBtn, (!slipUri || saving) && styles.confirmBtnDisabled]}
+              onPress={() => confirmPayment('qris')} disabled={!slipUri || saving}>
               {saving ? <ActivityIndicator color="#fff" /> : <Text style={styles.confirmBtnText}>✓ Confirm Payment</Text>}
             </TouchableOpacity>
             <TouchableOpacity style={styles.cancelBtn} onPress={() => setStep('method')}>
@@ -279,8 +271,8 @@ export default function CheckoutScreen() {
             </View>
             <PhotoPicker label="QRIS receipt photo" />
             <TouchableOpacity
-              style={[styles.confirmBtn, (!note.trim() || saving) && styles.confirmBtnDisabled]}
-              onPress={() => confirmPayment('split')} disabled={!note.trim() || saving}>
+              style={[styles.confirmBtn, (!slipUri || !note.trim() || saving) && styles.confirmBtnDisabled]}
+              onPress={() => confirmPayment('split')} disabled={!slipUri || !note.trim() || saving}>
               {saving ? <ActivityIndicator color="#fff" /> : <Text style={styles.confirmBtnText}>✓ Confirm Split Payment</Text>}
             </TouchableOpacity>
             <TouchableOpacity style={styles.cancelBtn} onPress={() => setStep('method')}>
