@@ -136,7 +136,8 @@ export default function DashboardClient({ token }: { token: string | null }) {
               }`}>
               {r.label}
             </button>
-          ))}\n        </div>
+          ))}
+        </div>
       </div>
 
       {/* Low stock alert */}
