@@ -84,6 +84,9 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                   <a href="/stock-in" className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-slate-700 hover:bg-slate-100 transition-colors">
                     📦 Stock In
                   </a>
+                  <a href="/stock-adjustments" className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-slate-700 hover:bg-slate-100 transition-colors">
+                    ⚡ Adjustments
+                  </a>
                 </div>
               </nav>
 
