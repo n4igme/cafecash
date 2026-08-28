@@ -82,6 +82,7 @@ export default function DashboardClient({ token }: { token: string | null }) {
   })
   const [orders,       setOrders]       = useState<Order[]>([])
   const [productCount, setProductCount] = useState(0)
+  const [lowStock,     setLowStock]     = useState<{ id: string; name: string; stock_qty: number; alert_qty: number; unit: string }[]>([])
   const [loading,      setLoading]      = useState(true)
   const [range,        setRange]        = useState<Range>('today')
 
@@ -91,8 +92,14 @@ export default function DashboardClient({ token }: { token: string | null }) {
         filter: "status = 'paid'", sort: '-id', expand: 'order_items_via_order',
       }),
       pb.collection('products').getFullList({ fields: 'id' }),
-    ]).then(([ords, prods]) => {
-      setOrders(ords); setProductCount(prods.length); setLoading(false)
+      pb.collection('ingredients').getFullList<{ id: string; name: string; stock_qty: number; alert_qty: number; unit: string }>({
+        filter: 'alert_qty > 0',
+      }),
+    ]).then(([ords, prods, ingrs]) => {
+      setOrders(ords)
+      setProductCount(prods.length)
+      setLowStock(ingrs.filter(i => i.stock_qty <= i.alert_qty))
+      setLoading(false)
     })
   }, [])
 
@@ -129,9 +136,30 @@ export default function DashboardClient({ token }: { token: string | null }) {
               }`}>
               {r.label}
             </button>
-          ))}
-        </div>
+          ))}\n        </div>
       </div>
+
+      {/* Low stock alert */}
+      {lowStock.length > 0 && (
+        <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 flex items-start gap-3">
+          <span className="text-amber-500 text-xl mt-0.5">⚠️</span>
+          <div className="flex-1">
+            <p className="text-amber-700 text-sm font-semibold">{lowStock.length} ingredient(s) running low</p>
+            <div className="flex flex-wrap gap-2 mt-1">
+              {lowStock.map(i => (
+                <span key={i.id} className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+                  i.stock_qty <= 0 ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700'
+                }`}>
+                  {i.name}: {i.stock_qty} {i.unit} {i.stock_qty <= 0 ? '🔴' : '🟡'}
+                </span>
+              ))}
+            </div>
+            <a href="/ingredients" className="text-xs text-amber-600 hover:text-amber-800 font-medium mt-1 inline-block">
+              → Go to Ingredients
+            </a>
+          </div>
+        </div>
+      )}
 
       {/* ── 4 stat cards — all driven by period filter ── */}
       <div className="grid grid-cols-4 gap-4">

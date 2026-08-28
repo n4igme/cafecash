@@ -8,6 +8,7 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 import { pb } from '../lib/pocketbase'
 import { useCart } from '../store/cart'
 import { formatRupiah } from '../lib/format'
+import { deductStock, restoreStock } from '../lib/stock'
 import type { Product } from '../../../packages/types'
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL!
@@ -104,29 +105,36 @@ export default function POSScreen() {
     }
     setSaving(true)
     try {
-      // Delete existing order_items then recreate from cart
-      const existing = await pb.collection('order_items').getFullList({
-        filter: `order = '${orderId}'`, fields: 'id',
-      })
+      // 1. Get existing order_items (for stock restore)
+      const existing = await pb.collection('order_items').getFullList<{
+        id: string; product: string; quantity: number
+      }>({ filter: `order = '${orderId}'`, fields: 'id,product,quantity' })
+
+      // 2. Restore stock for old items
+      if (existing.length > 0) {
+        await restoreStock(orderId, existing.map(i => ({ product: i.product, quantity: i.quantity })))
+      }
+
+      // 3. Delete old order_items
       await Promise.all(existing.map(i => pb.collection('order_items').delete(i.id)))
+
+      // 4. Create new order_items
       await Promise.all(items.map(i =>
         pb.collection('order_items').create({
-          order:        orderId,
-          product:      i.product.id,
-          product_name: i.product.name,
-          price:        i.product.price,
-          quantity:     i.quantity,
+          order: orderId, product: i.product.id,
+          product_name: i.product.name, price: i.product.price, quantity: i.quantity,
         })
       ))
-      // Update order total
+
+      // 5. Deduct stock for new items
+      await deductStock(orderId, items.map(i => ({ product: i.product.id, quantity: i.quantity })))
+
+      // 6. Update order total
       await pb.collection('orders').update(orderId, { total: total() })
       router.replace('/active-orders')
     } catch (e: any) {
       const msg = e?.response?.message ?? e?.message ?? 'Failed to save order'
-      const url = e?.url ?? ''
-      const status = e?.status ?? ''
-      Alert.alert('Save Error', `${msg}\nstatus: ${status}\nurl: ${url}\norderId: ${orderId}`)
-      console.error('[CafeCash] saveOrder error:', JSON.stringify(e))
+      Alert.alert('Save Error', msg)
     } finally {
       setSaving(false)
     }
@@ -142,6 +150,13 @@ export default function POSScreen() {
           text: 'Cancel Order', style: 'destructive',
           onPress: async () => {
             if (orderId) {
+              // Restore stock before cancelling
+              const existing = await pb.collection('order_items').getFullList<{
+                id: string; product: string; quantity: number
+              }>({ filter: `order = '${orderId}'`, fields: 'id,product,quantity' })
+              if (existing.length > 0) {
+                await restoreStock(orderId, existing.map(i => ({ product: i.product, quantity: i.quantity })))
+              }
               await pb.collection('orders').update(orderId, { status: 'cancelled' }).catch(() => {})
             }
             clearOrder()
