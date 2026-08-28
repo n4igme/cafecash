@@ -91,6 +91,40 @@ export default function POSScreen() {
   const cartCount = items.reduce((s, i) => s + i.quantity, 0)
   const getQty = (id: string) => items.find(i => i.product.id === id)?.quantity ?? 0
 
+  const [saving, setSaving] = useState(false)
+
+  const saveOrder = async () => {
+    if (!orderId) return
+    if (items.length === 0) {
+      Alert.alert('No items', 'Add at least one item before saving.')
+      return
+    }
+    setSaving(true)
+    try {
+      // Delete existing order_items then recreate from cart
+      const existing = await pb.collection('order_items').getFullList({
+        filter: `order = '${orderId}'`, fields: 'id',
+      })
+      await Promise.all(existing.map(i => pb.collection('order_items').delete(i.id)))
+      await Promise.all(items.map(i =>
+        pb.collection('order_items').create({
+          order:        orderId,
+          product:      i.product.id,
+          product_name: i.product.name,
+          price:        i.product.price,
+          quantity:     i.quantity,
+        })
+      ))
+      // Update order total
+      await pb.collection('orders').update(orderId, { total: total() })
+      router.replace('/active-orders')
+    } catch (e: any) {
+      Alert.alert('Error', e?.message ?? 'Failed to save order')
+    } finally {
+      setSaving(false)
+    }
+  }
+
   const cancelOrder = () => {
     Alert.alert(
       'Cancel Order',
@@ -225,6 +259,18 @@ export default function POSScreen() {
             <Text style={styles.totalLabel}>Total</Text>
             <Text style={styles.totalAmount}>{formatRupiah(total())}</Text>
           </View>
+          {/* Save Order — persists items to DB, back to Active Orders */}
+          <TouchableOpacity
+            style={[styles.saveBtn, (items.length === 0 || saving) && styles.saveBtnDisabled]}
+            onPress={saveOrder}
+            disabled={items.length === 0 || saving}
+          >
+            {saving
+              ? <ActivityIndicator color="#6366f1" size="small" />
+              : <Text style={styles.saveBtnText}>💾 Save Order</Text>
+            }
+          </TouchableOpacity>
+          {/* Proceed to Payment */}
           <TouchableOpacity
             style={[styles.checkoutBtn, items.length === 0 && styles.checkoutBtnDisabled]}
             onPress={() => router.push('/checkout')}
@@ -305,4 +351,7 @@ const styles = StyleSheet.create({
   checkoutBtn: { paddingVertical: 14, backgroundColor: '#6366f1', borderRadius: 12, alignItems: 'center' },
   checkoutBtnDisabled: { backgroundColor: '#c7d2fe' },
   checkoutBtnText: { color: '#fff', fontWeight: '700', fontSize: 14 },
+  saveBtn: { paddingVertical: 12, borderRadius: 12, alignItems: 'center', marginBottom: 8, borderWidth: 1.5, borderColor: '#6366f1', backgroundColor: '#fff' },
+  saveBtnDisabled: { borderColor: '#c7d2fe' },
+  saveBtnText: { color: '#6366f1', fontWeight: '700', fontSize: 14 },
 })
