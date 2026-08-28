@@ -22,6 +22,36 @@ function getProductImageUrl(product: Product): string | null {
 
 interface StoreSettings { store_name: string; logo_emoji: string; logo: string; id: string; collectionId: string }
 
+// Map of productId → available qty (null = no recipe = unlimited)
+type StockMap = Record<string, number | null>
+
+function buildStockMap(
+  recipes: { product: string; ingredient: string; qty_needed: number }[],
+  ingredients: { id: string; stock_qty: number }[]
+): StockMap {
+  const ingrMap: Record<string, number> = {}
+  ingredients.forEach(i => { ingrMap[i.id] = i.stock_qty })
+
+  // Group recipes by product
+  const byProduct: Record<string, { ingredient: string; qty_needed: number }[]> = {}
+  recipes.forEach(r => {
+    if (!byProduct[r.product]) byProduct[r.product] = []
+    byProduct[r.product].push({ ingredient: r.ingredient, qty_needed: r.qty_needed })
+  })
+
+  const map: StockMap = {}
+  Object.entries(byProduct).forEach(([productId, reqs]) => {
+    let min = Infinity
+    reqs.forEach(req => {
+      const stock = ingrMap[req.ingredient] ?? 0
+      const possible = req.qty_needed > 0 ? Math.floor(stock / req.qty_needed) : Infinity
+      min = Math.min(min, possible)
+    })
+    map[productId] = min === Infinity ? null : min
+  })
+  return map
+}
+
 export default function POSScreen() {
   const router = useRouter()
   const { orderId, customerName, items, add, increment, decrement, total, clearOrder } = useCart()
@@ -32,6 +62,7 @@ export default function POSScreen() {
   const [storeName,      setStoreName]      = useState('CafeCash')
   const [logoEmoji,      setLogoEmoji]      = useState('☕')
   const [logoUrl,        setLogoUrl]        = useState<string | null>(null)
+  const [stockMap,       setStockMap]       = useState<StockMap>({})
 
   useEffect(() => {
     pb.collection('settings').getFirstListItem<StoreSettings>('')
@@ -46,6 +77,14 @@ export default function POSScreen() {
       .then(data => {
         setProducts(data)
         setLoading(false)
+
+        // Fetch recipes + ingredients to build stock availability map
+        Promise.all([
+          pb.collection('recipes').getFullList<{ product: string; ingredient: string; qty_needed: number }>({ fields: 'product,ingredient,qty_needed' }),
+          pb.collection('ingredients').getFullList<{ id: string; stock_qty: number }>({ fields: 'id,stock_qty' }),
+        ]).then(([recipes, ingredients]) => {
+          setStockMap(buildStockMap(recipes, ingredients))
+        }).catch(() => {})
 
         // If reopening an existing order, load its items into cart
         if (orderId && items.length === 0) {
@@ -214,20 +253,31 @@ export default function POSScreen() {
             numColumns={3}
             contentContainerStyle={styles.grid}
             renderItem={({ item }) => {
-              const qty    = getQty(item.id)
-              const imgUrl = getProductImageUrl(item)
+              const qty      = getQty(item.id)
+              const imgUrl   = getProductImageUrl(item)
+              const available = stockMap[item.id] // null = unlimited, 0 = out
+              const outOfStock = available !== null && available !== undefined && available <= 0
+
               return (
-                <TouchableOpacity style={styles.card} onPress={() => add(item)}>
+                <TouchableOpacity
+                  style={[styles.card, outOfStock && styles.cardDisabled]}
+                  onPress={() => !outOfStock && add(item)}
+                  disabled={outOfStock}
+                >
                   <View style={styles.cardImage}>
                     {imgUrl ? (
-                      <Image source={{ uri: imgUrl }} style={styles.productImage} resizeMode="cover" />
+                      <Image source={{ uri: imgUrl }} style={[styles.productImage, outOfStock && { opacity: 0.3 }]} resizeMode="cover" />
                     ) : (
-                      <Text style={{ fontSize: 28 }}>☕</Text>
+                      <Text style={{ fontSize: 28, opacity: outOfStock ? 0.3 : 1 }}>☕</Text>
                     )}
                   </View>
-                  <Text style={styles.cardName} numberOfLines={2}>{item.name}</Text>
-                  <Text style={styles.cardPrice}>{formatRupiah(item.price)}</Text>
-                  {qty > 0 && (
+                  <Text style={[styles.cardName, outOfStock && styles.cardNameDisabled]} numberOfLines={2}>{item.name}</Text>
+                  {outOfStock ? (
+                    <Text style={styles.outOfStockLabel}>Out of stock</Text>
+                  ) : (
+                    <Text style={styles.cardPrice}>{formatRupiah(item.price)}</Text>
+                  )}
+                  {qty > 0 && !outOfStock && (
                     <View style={styles.badge}>
                       <Text style={styles.badgeText}>{qty}</Text>
                     </View>
@@ -346,7 +396,10 @@ const styles = StyleSheet.create({
   },
   productImage: { width: 60, height: 60, borderRadius: 10 },
   cardName:  { fontSize: 13, fontWeight: '600', color: '#1e293b', textAlign: 'center' },
+  cardNameDisabled: { fontSize: 13, fontWeight: '600', color: '#cbd5e1', textAlign: 'center' },
   cardPrice: { fontSize: 12, color: '#6366f1', marginTop: 4, fontWeight: '500' },
+  outOfStockLabel: { fontSize: 10, color: '#ef4444', marginTop: 4, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.5 },
+  cardDisabled: { opacity: 0.6, backgroundColor: '#f8fafc' },
   badge: {
     position: 'absolute', top: 8, right: 8,
     backgroundColor: '#6366f1', borderRadius: 10,
