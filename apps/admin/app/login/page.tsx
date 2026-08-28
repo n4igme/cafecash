@@ -1,8 +1,14 @@
-export default function LoginPage({
+import { cookies } from 'next/headers'
+import { t } from '../../lib/i18n'
+import type { Lang } from '../../lib/i18n'
+
+export default async function LoginPage({
   searchParams,
 }: {
   searchParams?: { error?: string }
 }) {
+  const cookieStore = await cookies()
+  const lang = (cookieStore.get('lang')?.value ?? 'id') as Lang
   const error = searchParams?.error
 
   return (
@@ -12,23 +18,19 @@ export default function LoginPage({
         <div className="text-center mb-8">
           <div className="text-4xl mb-3">☕</div>
           <h1 className="text-2xl font-bold text-slate-800">CafeCash</h1>
-          <p className="text-sm text-slate-400 mt-1">Admin Dashboard</p>
+          <p className="text-sm text-slate-400 mt-1">{t('login.title', lang)}</p>
         </div>
 
         <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-8">
-          <h2 className="text-lg font-semibold text-slate-700 mb-6">Sign in</h2>
+          <h2 className="text-lg font-semibold text-slate-700 mb-6">{t('login.sign_in', lang)}</h2>
 
           <form method="POST" action="/api/login" className="space-y-4">
             <div>
               <label htmlFor="email" className="block text-sm font-medium text-slate-600 mb-1">
-                Email
+                {t('login.email', lang)}
               </label>
               <input
-                id="email"
-                name="email"
-                type="email"
-                autoComplete="email"
-                required
+                id="email" name="email" type="email" autoComplete="email" required
                 placeholder="admin@cafecash.pos"
                 className="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm
                            focus:outline-none focus:ring-2 focus:ring-indigo-400 transition"
@@ -37,15 +39,11 @@ export default function LoginPage({
 
             <div>
               <label htmlFor="password" className="block text-sm font-medium text-slate-600 mb-1">
-                Password
+                {t('login.password', lang)}
               </label>
               <input
-                id="password"
-                name="password"
-                type="password"
-                autoComplete="current-password"
-                required
-                placeholder="••••••••"
+                id="password" name="password" type="password"
+                autoComplete="current-password" required placeholder="••••••••"
                 className="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm
                            focus:outline-none focus:ring-2 focus:ring-indigo-400 transition"
               />
@@ -57,18 +55,16 @@ export default function LoginPage({
               </div>
             )}
 
-            <button
-              type="submit"
+            <button type="submit"
               className="w-full py-2.5 bg-indigo-600 text-white rounded-lg text-sm font-semibold
-                         hover:bg-indigo-700 transition-colors mt-2"
-            >
-              Sign in
+                         hover:bg-indigo-700 transition-colors mt-2">
+              {t('login.btn', lang)}
             </button>
           </form>
         </div>
 
         <p className="text-center text-xs text-slate-400 mt-6">
-          CafeCash · Self-hosted · Tailscale
+          CafeCash · {t('login.self_hosted', lang)}
         </p>
       </div>
     </div>
