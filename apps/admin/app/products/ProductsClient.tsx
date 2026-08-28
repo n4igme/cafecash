@@ -18,6 +18,48 @@ function productImageUrl(pb: PocketBase, product: Product): string | null {
   return null
 }
 
+// null = no recipe (unlimited), number = max servings possible
+type StockMap = Record<string, number | null>
+
+function buildStockMap(
+  recipes: { product: string; ingredient: string; qty_needed: number }[],
+  ingredients: { id: string; stock_qty: number }[]
+): StockMap {
+  const stockById: Record<string, number> = {}
+  for (const i of ingredients) stockById[i.id] = i.stock_qty
+
+  const productIds = [...new Set(recipes.map(r => r.product))]
+  const map: StockMap = {}
+  for (const pid of productIds) {
+    const lines = recipes.filter(r => r.product === pid)
+    if (lines.length === 0) { map[pid] = null; continue }
+    let minServings = Infinity
+    for (const line of lines) {
+      const stock = stockById[line.ingredient] ?? 0
+      const servings = line.qty_needed > 0 ? Math.floor(stock / line.qty_needed) : Infinity
+      if (servings < minServings) minServings = servings
+    }
+    map[pid] = minServings === Infinity ? null : minServings
+  }
+  return map
+}
+
+function StockBadge({ servings }: { servings: number | null | undefined }) {
+  if (servings === undefined) return null           // no recipe loaded yet
+  if (servings === null)      return null           // no recipe = unlimited, don't show
+  if (servings <= 0)  return (
+    <span className="ml-1.5 px-1.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-600">
+      ⚫ Out of stock
+    </span>
+  )
+  if (servings <= 5)  return (
+    <span className="ml-1.5 px-1.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-700">
+      🟡 Low ({servings} left)
+    </span>
+  )
+  return null
+}
+
 export default function ProductsClient({ token }: { token: string | null }) {
   const [pb] = useState(() => {
     const client = new PocketBase(API_URL)
@@ -31,6 +73,7 @@ export default function ProductsClient({ token }: { token: string | null }) {
   const [form,         setForm]         = useState<Partial<Product>>(EMPTY)
   const [saving,       setSaving]       = useState(false)
   const [imagePreview, setImagePreview] = useState<string | null>(null)
+  const [stockMap,     setStockMap]     = useState<StockMap>({})
   const fileRef = useRef<HTMLInputElement>(null)
 
   const load = async () => {
@@ -38,6 +81,14 @@ export default function ProductsClient({ token }: { token: string | null }) {
     const data = await pb.collection('products').getFullList<Product>({ sort: 'category,name' })
     setProducts(data)
     setLoading(false)
+
+    // Fetch stock map in background
+    Promise.all([
+      pb.collection('recipes').getFullList<{ product: string; ingredient: string; qty_needed: number }>({ fields: 'product,ingredient,qty_needed' }),
+      pb.collection('ingredients').getFullList<{ id: string; stock_qty: number }>({ fields: 'id,stock_qty' }),
+    ]).then(([recipes, ingredients]) => {
+      setStockMap(buildStockMap(recipes, ingredients))
+    }).catch(() => {})
   }
 
   useEffect(() => { load() }, [])
@@ -138,14 +189,17 @@ export default function ProductsClient({ token }: { token: string | null }) {
                     <td className="px-4 py-3 text-slate-500">{p.category}</td>
                     <td className="px-4 py-3 font-semibold text-indigo-600">{formatRupiah(p.price)}</td>
                     <td className="px-4 py-3">
-                      <button onClick={() => toggleAvailable(p)}
-                        className={`px-2 py-1 rounded-full text-xs font-medium transition-colors ${
-                          p.is_available
-                            ? 'bg-green-100 text-green-700 hover:bg-green-200'
-                            : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
-                        }`}>
-                        {p.is_available ? 'Available' : 'Hidden'}
-                      </button>
+                      <div className="flex items-center flex-wrap gap-1">
+                        <button onClick={() => toggleAvailable(p)}
+                          className={`px-2 py-1 rounded-full text-xs font-medium transition-colors ${
+                            p.is_available
+                              ? 'bg-green-100 text-green-700 hover:bg-green-200'
+                              : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
+                          }`}>
+                          {p.is_available ? 'Available' : 'Hidden'}
+                        </button>
+                        <StockBadge servings={stockMap[p.id]} />
+                      </div>
                     </td>
                     <td className="px-4 py-3">
                       <button onClick={() => openEdit(p)}
