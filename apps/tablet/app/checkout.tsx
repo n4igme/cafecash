@@ -40,33 +40,39 @@ export default function CheckoutScreen() {
   }, [])
 
   const takePhoto = async () => {
-    // On LineageOS/custom ROMs, camera picker doesn't return results reliably.
-    // Use gallery directly — cashier screenshots customer's banking app receipt,
-    // then selects it here.
-    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync()
-    if (!perm.granted) {
-      // Try camera as fallback
-      const camPerm = await ImagePicker.requestCameraPermissionsAsync()
-      if (!camPerm.granted) {
-        Alert.alert('Permission needed', 'Please allow photo access in Settings.')
-        return
-      }
-      const camResult = await ImagePicker.launchCameraAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        quality: 0.8, allowsEditing: true,
-      })
-      if (!camResult.canceled && camResult.assets?.[0]) {
-        setSlipUri(camResult.assets[0].uri)
-      }
-      return
-    }
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      quality: 0.8, allowsEditing: true,
-    })
-    if (!result.canceled && result.assets?.[0]) {
-      setSlipUri(result.assets[0].uri)
-    }
+    Alert.alert(
+      'Payment Proof',
+      'Select receipt photo:',
+      [
+        {
+          text: '📷 Camera',
+          onPress: async () => {
+            const perm = await ImagePicker.requestCameraPermissionsAsync()
+            if (!perm.granted) { Alert.alert('Permission needed', 'Allow camera in Settings.'); return }
+            const result = await ImagePicker.launchCameraAsync({
+              mediaTypes: ImagePicker.MediaTypeOptions.Images,
+              quality: 0.8,
+              allowsEditing: false,
+            })
+            if (!result.canceled && result.assets?.[0]) setSlipUri(result.assets[0].uri)
+          }
+        },
+        {
+          text: '🖼️ Gallery',
+          onPress: async () => {
+            const perm = await ImagePicker.requestMediaLibraryPermissionsAsync()
+            if (!perm.granted) { Alert.alert('Permission needed', 'Allow gallery in Settings.'); return }
+            const result = await ImagePicker.launchImageLibraryAsync({
+              mediaTypes: ImagePicker.MediaTypeOptions.Images,
+              quality: 0.8,
+              allowsEditing: false,  // no crop — avoid accidental cancel
+            })
+            if (!result.canceled && result.assets?.[0]) setSlipUri(result.assets[0].uri)
+          }
+        },
+        { text: 'Cancel', style: 'cancel' }
+      ]
+    )
   }
 
   const confirmPayment = async (method: 'qris' | 'cash' | 'split') => {
