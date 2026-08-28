@@ -1,5 +1,5 @@
 import { Redirect } from 'expo-router'
 
 export default function Index() {
-  return <Redirect href="/pos" />
+  return <Redirect href="/active-orders" />
 }

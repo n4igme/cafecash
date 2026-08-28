@@ -23,10 +23,12 @@ export interface CartItem {
 
 export interface Order extends PBRecord {
   total: number
-  status: 'pending' | 'paid' | 'cancelled'
+  status: 'open' | 'paid' | 'cancelled' | 'refunded'
+  customer_name?: string
   payment_method?: 'qris' | 'cash' | 'split'
-  payment_slip?: string   // PocketBase file field
+  payment_slip?: string
   note?: string
+  refund_reason?: string
   expand?: {
     order_items_via_order?: OrderItem[]
   }

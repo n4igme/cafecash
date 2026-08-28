@@ -2,17 +2,34 @@ import { create } from 'zustand'
 import type { Product, CartItem } from '../../../packages/types'
 
 interface CartStore {
+  // Active order context
+  orderId:      string | null
+  customerName: string
+
+  // Cart items
   items: CartItem[]
-  add: (product: Product) => void
-  remove: (productId: string) => void
+
+  // Order actions
+  setOrder:     (id: string, name: string) => void
+  clearOrder:   () => void
+
+  // Cart actions
+  add:       (product: Product) => void
+  remove:    (productId: string) => void
   increment: (productId: string) => void
   decrement: (productId: string) => void
-  clear: () => void
-  total: () => number
+  clear:     () => void
+  total:     () => number
 }
 
 export const useCart = create<CartStore>((set, get) => ({
-  items: [],
+  orderId:      null,
+  customerName: '',
+  items:        [],
+
+  setOrder: (id, name) => set({ orderId: id, customerName: name }),
+
+  clearOrder: () => set({ orderId: null, customerName: '', items: [] }),
 
   add: (product) => {
     const existing = get().items.find(i => i.product.id === product.id)
