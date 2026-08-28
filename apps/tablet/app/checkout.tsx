@@ -40,19 +40,37 @@ export default function CheckoutScreen() {
   }, [])
 
   const takePhoto = async () => {
-    const perm = await ImagePicker.requestCameraPermissionsAsync()
-    if (!perm.granted) {
-      Alert.alert('Permission needed', 'Camera permission is required to take a payment photo.')
-      return
-    }
-    const result = await ImagePicker.launchCameraAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      quality: 0.7,
-      allowsEditing: false,
-    })
-    if (!result.canceled && result.assets[0]) {
-      setSlipUri(result.assets[0].uri)
-    }
+    Alert.alert(
+      'Payment Proof',
+      'Add receipt photo:',
+      [
+        {
+          text: '📷 Camera',
+          onPress: async () => {
+            const perm = await ImagePicker.requestCameraPermissionsAsync()
+            if (!perm.granted) { Alert.alert('Permission needed', 'Camera permission required.'); return }
+            const result = await ImagePicker.launchCameraAsync({
+              mediaTypes: ImagePicker.MediaTypeOptions.Images,
+              quality: 0.7, allowsEditing: true,
+            })
+            if (!result.canceled && result.assets?.[0]) setSlipUri(result.assets[0].uri)
+          }
+        },
+        {
+          text: '🖼️ Gallery',
+          onPress: async () => {
+            const perm = await ImagePicker.requestMediaLibraryPermissionsAsync()
+            if (!perm.granted) { Alert.alert('Permission needed', 'Gallery permission required.'); return }
+            const result = await ImagePicker.launchImageLibraryAsync({
+              mediaTypes: ImagePicker.MediaTypeOptions.Images,
+              quality: 0.7, allowsEditing: true,
+            })
+            if (!result.canceled && result.assets?.[0]) setSlipUri(result.assets[0].uri)
+          }
+        },
+        { text: 'Cancel', style: 'cancel' }
+      ]
+    )
   }
 
   const confirmPayment = async (method: 'qris' | 'cash' | 'split') => {
