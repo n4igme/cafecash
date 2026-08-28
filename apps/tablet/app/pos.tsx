@@ -42,7 +42,27 @@ export default function POSScreen() {
 
     pb.collection('products')
       .getFullList<Product>({ filter: 'is_available = true', sort: 'category,name' })
-      .then(data => { setProducts(data); setLoading(false) })
+      .then(data => {
+        setProducts(data)
+        setLoading(false)
+
+        // If reopening an existing order, load its items into cart
+        if (orderId && items.length === 0) {
+          pb.collection('order_items').getFullList<{
+            id: string; product: string; product_name: string; price: number; quantity: number
+          }>({ filter: `order = '${orderId}'` })
+            .then(existingItems => {
+              existingItems.forEach(oi => {
+                const product = data.find(p => p.id === oi.product)
+                if (product) {
+                  // Add item qty times
+                  for (let i = 0; i < oi.quantity; i++) add(product)
+                }
+              })
+            })
+            .catch(() => {})
+        }
+      })
       .catch(err => {
         console.error('[CafeCash] products fetch error:', JSON.stringify(err))
         setLoading(false)

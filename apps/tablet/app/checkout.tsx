@@ -62,7 +62,14 @@ export default function CheckoutScreen() {
     }
     setSaving(true)
     try {
-      // 1. Create order_items
+      // 1. Delete any existing order_items (in case order was reopened and edited)
+      const existing = await pb.collection('order_items').getFullList({
+        filter: `order = '${orderId}'`,
+        fields: 'id',
+      })
+      await Promise.all(existing.map(i => pb.collection('order_items').delete(i.id)))
+
+      // 2. Create fresh order_items from current cart
       await Promise.all(
         items.map(i =>
           pb.collection('order_items').create({
