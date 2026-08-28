@@ -39,78 +39,61 @@ export default function CheckoutScreen() {
       .finally(() => setLoadingQris(false))
   }, [])
 
-  const takePhoto = async () => {
-    Alert.alert(
-      'Payment Proof',
-      'Select receipt photo:',
-      [
-        {
-          text: '📷 Camera',
-          onPress: async () => {
-            const perm = await ImagePicker.requestCameraPermissionsAsync()
-            if (!perm.granted) { Alert.alert('Permission needed', 'Allow camera in Settings.'); return }
-            const result = await ImagePicker.launchCameraAsync({
-              mediaTypes: ImagePicker.MediaTypeOptions.Images,
-              quality: 0.8,
-              allowsEditing: false,
-            })
-            if (!result.canceled && result.assets?.[0]) setSlipUri(result.assets[0].uri)
-          }
-        },
-        {
-          text: '🖼️ Gallery',
-          onPress: async () => {
-            const perm = await ImagePicker.requestMediaLibraryPermissionsAsync()
-            if (!perm.granted) { Alert.alert('Permission needed', 'Allow gallery in Settings.'); return }
-            const result = await ImagePicker.launchImageLibraryAsync({
-              mediaTypes: ImagePicker.MediaTypeOptions.Images,
-              quality: 0.8,
-              allowsEditing: false,  // no crop — avoid accidental cancel
-            })
-            if (!result.canceled && result.assets?.[0]) setSlipUri(result.assets[0].uri)
-          }
-        },
-        { text: 'Cancel', style: 'cancel' }
-      ]
-    )
+  // Each picker is a standalone async function — no nested Alert callbacks
+  const pickFromGallery = async () => {
+    try {
+      const perm = await ImagePicker.requestMediaLibraryPermissionsAsync()
+      if (!perm.granted) { Alert.alert('Permission needed', 'Allow gallery in Settings.'); return }
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        quality: 0.8,
+      })
+      if (!result.canceled && result.assets?.[0]?.uri) {
+        setSlipUri(result.assets[0].uri)
+      }
+    } catch (e: any) {
+      Alert.alert('Gallery error', e?.message ?? 'Failed to open gallery')
+    }
+  }
+
+  const pickFromCamera = async () => {
+    try {
+      const perm = await ImagePicker.requestCameraPermissionsAsync()
+      if (!perm.granted) { Alert.alert('Permission needed', 'Allow camera in Settings.'); return }
+      const result = await ImagePicker.launchCameraAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        quality: 0.8,
+      })
+      if (!result.canceled && result.assets?.[0]?.uri) {
+        setSlipUri(result.assets[0].uri)
+      }
+    } catch (e: any) {
+      Alert.alert('Camera error', e?.message ?? 'Failed to open camera')
+    }
   }
 
   const confirmPayment = async (method: 'qris' | 'cash' | 'split') => {
     if (!orderId) {
-      Alert.alert('Error', 'No active order found. Please go back and try again.')
+      Alert.alert('Error', 'No active order found.')
       return
     }
     setSaving(true)
     try {
-      // 1. Delete any existing order_items (in case order was reopened and edited)
-      const existing = await pb.collection('order_items').getFullList({
-        filter: `order = '${orderId}'`,
-        fields: 'id',
-      })
+      // Delete existing items then recreate
+      const existing = await pb.collection('order_items').getFullList({ filter: `order = '${orderId}'`, fields: 'id' })
       await Promise.all(existing.map(i => pb.collection('order_items').delete(i.id)))
+      await Promise.all(items.map(i => pb.collection('order_items').create({
+        order: orderId, product: i.product.id,
+        product_name: i.product.name, price: i.product.price, quantity: i.quantity,
+      })))
 
-      // 2. Create fresh order_items from current cart
-      await Promise.all(
-        items.map(i =>
-          pb.collection('order_items').create({
-            order:        orderId,
-            product:      i.product.id,
-            product_name: i.product.name,
-            price:        i.product.price,
-            quantity:     i.quantity,
-          })
-        )
-      )
-
-      // 2. Update order — status, total, payment info
       const formData = new FormData()
       formData.append('total',          String(total()))
       formData.append('status',         'paid')
       formData.append('payment_method', method)
       if (note.trim()) formData.append('note', note.trim())
       if (slipUri) {
-        const filename = `slip_${Date.now()}.jpg`
-        formData.append('payment_slip', { uri: slipUri, name: filename, type: 'image/jpeg' } as any)
+        formData.append('payment_slip', { uri: slipUri, name: `slip_${Date.now()}.jpg`, type: 'image/jpeg' } as any)
       }
       await pb.collection('orders').update(orderId, formData)
 
@@ -124,7 +107,6 @@ export default function CheckoutScreen() {
     }
   }
 
-  // ── Success screen ────────────────────────────────────────────────────────
   if (paid) {
     return (
       <SafeAreaView style={styles.root}>
@@ -137,6 +119,37 @@ export default function CheckoutScreen() {
       </SafeAreaView>
     )
   }
+
+  // Reusable photo picker UI
+  const PhotoPicker = ({ label }: { label: string }) => (
+    slipUri ? (
+      <View style={styles.slipPreview}>
+        <Image source={{ uri: slipUri }} style={styles.slipImage} resizeMode="cover" />
+        <Text style={styles.slipLabel}>✓ Receipt attached</Text>
+        <View style={styles.retakeBtns}>
+          <TouchableOpacity style={styles.retakeBtn} onPress={pickFromCamera}>
+            <Text style={styles.retakeBtnText}>📷 Camera</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.retakeBtn} onPress={pickFromGallery}>
+            <Text style={styles.retakeBtnText}>🖼️ Gallery</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    ) : (
+      <View style={styles.photoBtnRow}>
+        <TouchableOpacity style={[styles.photoBtn, { flex: 1, marginRight: 6 }]} onPress={pickFromCamera}>
+          <Text style={styles.photoBtnIcon}>📷</Text>
+          <Text style={styles.photoBtnText}>Camera</Text>
+          <Text style={styles.photoBtnSub}>{label}</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={[styles.photoBtn, { flex: 1, marginLeft: 6 }]} onPress={pickFromGallery}>
+          <Text style={styles.photoBtnIcon}>🖼️</Text>
+          <Text style={styles.photoBtnText}>Gallery</Text>
+          <Text style={styles.photoBtnSub}>Select photo</Text>
+        </TouchableOpacity>
+      </View>
+    )
+  )
 
   return (
     <SafeAreaView style={styles.root}>
@@ -158,9 +171,7 @@ export default function CheckoutScreen() {
                 <Text style={styles.itemName}>{item.product.name}</Text>
                 <Text style={styles.itemQty}>x{item.quantity}</Text>
               </View>
-              <Text style={styles.itemTotal}>
-                {formatRupiah(item.product.price * item.quantity)}
-              </Text>
+              <Text style={styles.itemTotal}>{formatRupiah(item.product.price * item.quantity)}</Text>
             </View>
           ))}
         </ScrollView>
@@ -176,72 +187,46 @@ export default function CheckoutScreen() {
       <ScrollView style={styles.right} contentContainerStyle={styles.rightContent}
         showsVerticalScrollIndicator={false} bounces={false}>
 
-        {/* ── STEP 1: Choose payment method ── */}
+        {/* Method selection */}
         {step === 'method' && (
           <>
             <Text style={styles.stepTitle}>Select Payment Method</Text>
             <Text style={styles.stepSub}>How will the customer pay?</Text>
-
-            <TouchableOpacity style={styles.methodBtn} onPress={() => { setSlipUri(null); setStep('qris') }}>
-              <Text style={styles.methodIcon}>📱</Text>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.methodLabel}>QRIS</Text>
-                <Text style={styles.methodDesc}>e-wallet or mobile banking — photo required</Text>
-              </View>
-            </TouchableOpacity>
-
-            <TouchableOpacity style={styles.methodBtn} onPress={() => { setSlipUri(null); setStep('cash') }}>
-              <Text style={styles.methodIcon}>💵</Text>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.methodLabel}>Cash</Text>
-                <Text style={styles.methodDesc}>Physical money — no photo needed</Text>
-              </View>
-            </TouchableOpacity>
-
-            <TouchableOpacity style={styles.methodBtn} onPress={() => { setSlipUri(null); setStep('split') }}>
-              <Text style={styles.methodIcon}>🔀</Text>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.methodLabel}>Split Payment</Text>
-                <Text style={styles.methodDesc}>Cash + QRIS — photo + note required</Text>
-              </View>
-            </TouchableOpacity>
+            {[
+              { icon: '📱', label: 'QRIS', desc: 'e-wallet or mobile banking — photo required', value: 'qris' },
+              { icon: '💵', label: 'Cash', desc: 'Physical money — no photo needed', value: 'cash' },
+              { icon: '🔀', label: 'Split Payment', desc: 'Cash + QRIS — photo + note required', value: 'split' },
+            ].map(m => (
+              <TouchableOpacity key={m.value} style={styles.methodBtn}
+                onPress={() => { setSlipUri(null); setNote(''); setStep(m.value as PaymentStep) }}>
+                <Text style={styles.methodIcon}>{m.icon}</Text>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.methodLabel}>{m.label}</Text>
+                  <Text style={styles.methodDesc}>{m.desc}</Text>
+                </View>
+              </TouchableOpacity>
+            ))}
           </>
         )}
 
-        {/* ── STEP 2a: QRIS ── */}
+        {/* QRIS */}
         {step === 'qris' && (
           <>
             <Text style={styles.stepTitle}>QRIS Payment</Text>
             <View style={styles.qrContainer}>
-              {loadingQris ? (
-                <ActivityIndicator color="#6366f1" size="large" />
-              ) : qrisUrl ? (
-                <Image source={{ uri: qrisUrl }} style={styles.qrImage} resizeMode="contain" />
-              ) : (
-                <View style={styles.qrPlaceholder}>
-                  <Text style={styles.qrPlaceholderText}>QRIS not configured</Text>
-                  <Text style={styles.qrPlaceholderSub}>Upload in Settings</Text>
-                </View>
-              )}
+              {loadingQris ? <ActivityIndicator color="#6366f1" size="large" />
+                : qrisUrl ? <Image source={{ uri: qrisUrl }} style={styles.qrImage} resizeMode="contain" />
+                : <View style={styles.qrPlaceholder}>
+                    <Text style={styles.qrPlaceholderText}>QRIS not configured</Text>
+                    <Text style={styles.qrPlaceholderSub}>Upload in Settings</Text>
+                  </View>
+              }
             </View>
             <View style={styles.amountBadge}>
               <Text style={styles.amountLabel}>Amount to pay</Text>
               <Text style={styles.amountValue}>{formatRupiah(total())}</Text>
             </View>
-            {slipUri ? (
-              <View style={styles.slipPreview}>
-                <Image source={{ uri: slipUri }} style={styles.slipImage} resizeMode="cover" />
-                <TouchableOpacity style={styles.retakeBtn} onPress={takePhoto}>
-                  <Text style={styles.retakeBtnText}>📷 Retake</Text>
-                </TouchableOpacity>
-              </View>
-            ) : (
-              <TouchableOpacity style={styles.photoBtn} onPress={takePhoto}>
-                <Text style={styles.photoBtnIcon}>📷</Text>
-                <Text style={styles.photoBtnText}>Take Photo of Receipt</Text>
-                <Text style={styles.photoBtnSub}>Required before confirming</Text>
-              </TouchableOpacity>
-            )}
+            <PhotoPicker label="Take receipt photo" />
             <TouchableOpacity
               style={[styles.confirmBtn, (!slipUri || saving) && styles.confirmBtnDisabled]}
               onPress={() => confirmPayment('qris')} disabled={!slipUri || saving}>
@@ -253,7 +238,7 @@ export default function CheckoutScreen() {
           </>
         )}
 
-        {/* ── STEP 2b: Cash ── */}
+        {/* Cash */}
         {step === 'cash' && (
           <>
             <Text style={styles.stepTitle}>Cash Payment</Text>
@@ -279,7 +264,7 @@ export default function CheckoutScreen() {
           </>
         )}
 
-        {/* ── STEP 2c: Split ── */}
+        {/* Split */}
         {step === 'split' && (
           <>
             <Text style={styles.stepTitle}>Split Payment</Text>
@@ -294,20 +279,7 @@ export default function CheckoutScreen() {
                 placeholderTextColor="#94a3b8"
                 value={note} onChangeText={setNote} multiline />
             </View>
-            {slipUri ? (
-              <View style={styles.slipPreview}>
-                <Image source={{ uri: slipUri }} style={styles.slipImage} resizeMode="cover" />
-                <TouchableOpacity style={styles.retakeBtn} onPress={takePhoto}>
-                  <Text style={styles.retakeBtnText}>📷 Retake QRIS Photo</Text>
-                </TouchableOpacity>
-              </View>
-            ) : (
-              <TouchableOpacity style={styles.photoBtn} onPress={takePhoto}>
-                <Text style={styles.photoBtnIcon}>📷</Text>
-                <Text style={styles.photoBtnText}>Take Photo of QRIS Receipt</Text>
-                <Text style={styles.photoBtnSub}>Required for the QRIS portion</Text>
-              </TouchableOpacity>
-            )}
+            <PhotoPicker label="QRIS receipt photo" />
             <TouchableOpacity
               style={[styles.confirmBtn, (!slipUri || !note.trim() || saving) && styles.confirmBtnDisabled]}
               onPress={() => confirmPayment('split')} disabled={!slipUri || !note.trim() || saving}>
@@ -363,7 +335,7 @@ const styles = StyleSheet.create({
     marginBottom: 14, alignItems: 'center', justifyContent: 'center',
   },
   qrImage: { width: 180, height: 180 },
-  qrPlaceholder:    { alignItems: 'center' },
+  qrPlaceholder:     { alignItems: 'center' },
   qrPlaceholderText: { fontSize: 12, fontWeight: '600', color: '#94a3b8', textAlign: 'center' },
   qrPlaceholderSub:  { fontSize: 10, color: '#cbd5e1', marginTop: 4, textAlign: 'center' },
 
@@ -371,18 +343,21 @@ const styles = StyleSheet.create({
   amountLabel:  { fontSize: 10, color: '#6366f1', fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.5 },
   amountValue:  { fontSize: 20, fontWeight: '800', color: '#4338ca', marginTop: 2 },
 
+  // Photo picker
+  photoBtnRow:  { flexDirection: 'row', width: '100%', marginBottom: 14 },
   photoBtn: {
-    width: '100%', backgroundColor: '#fff', borderRadius: 14, padding: 16,
-    alignItems: 'center', marginBottom: 14,
-    borderWidth: 2, borderColor: '#6366f1', borderStyle: 'dashed',
+    backgroundColor: '#fff', borderRadius: 14, padding: 14,
+    alignItems: 'center', borderWidth: 2, borderColor: '#6366f1', borderStyle: 'dashed',
   },
-  photoBtnIcon: { fontSize: 28, marginBottom: 6 },
-  photoBtnText: { fontSize: 14, fontWeight: '700', color: '#6366f1' },
-  photoBtnSub:  { fontSize: 11, color: '#94a3b8', marginTop: 2 },
+  photoBtnIcon: { fontSize: 24, marginBottom: 4 },
+  photoBtnText: { fontSize: 13, fontWeight: '700', color: '#6366f1' },
+  photoBtnSub:  { fontSize: 10, color: '#94a3b8', marginTop: 2, textAlign: 'center' },
 
   slipPreview: { width: '100%', marginBottom: 14, alignItems: 'center' },
-  slipImage:   { width: '100%', height: 140, borderRadius: 12, marginBottom: 8 },
-  retakeBtn:   { paddingVertical: 6, paddingHorizontal: 16, borderRadius: 8, borderWidth: 1, borderColor: '#e2e8f0' },
+  slipImage:   { width: '100%', height: 140, borderRadius: 12, marginBottom: 6 },
+  slipLabel:   { fontSize: 12, color: '#16a34a', fontWeight: '600', marginBottom: 6 },
+  retakeBtns:  { flexDirection: 'row', gap: 8 },
+  retakeBtn:   { paddingVertical: 6, paddingHorizontal: 14, borderRadius: 8, borderWidth: 1, borderColor: '#e2e8f0' },
   retakeBtnText: { fontSize: 12, color: '#64748b', fontWeight: '600' },
 
   noteContainer: { width: '100%', marginBottom: 14 },
