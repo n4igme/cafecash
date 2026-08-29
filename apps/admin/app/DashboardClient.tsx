@@ -290,6 +290,7 @@ export default function DashboardClient({ token }: { token: string | null }) {
           <div className="px-6 py-4 border-b border-slate-100">
             <h3 className="font-semibold text-slate-800">Sales by Product</h3>
           </div>
+          <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-slate-50 bg-slate-50">
@@ -297,8 +298,8 @@ export default function DashboardClient({ token }: { token: string | null }) {
                 <th className="text-left px-6 py-3 text-slate-500 font-medium">Product</th>
                 <th className="text-left px-6 py-3 text-slate-500 font-medium">Qty</th>
                 <th className="text-left px-6 py-3 text-slate-500 font-medium">Revenue</th>
-                <th className="text-left px-6 py-3 text-slate-500 font-medium">HPP</th>
-                <th className="text-left px-6 py-3 text-slate-500 font-medium">Margin</th>
+                <th className="hidden sm:table-cell text-left px-6 py-3 text-slate-500 font-medium">HPP</th>
+                <th className="hidden sm:table-cell text-left px-6 py-3 text-slate-500 font-medium">Margin</th>
               </tr>
             </thead>
             <tbody>
@@ -310,9 +311,9 @@ export default function DashboardClient({ token }: { token: string | null }) {
                     <td className="px-6 py-3 text-slate-400 text-xs">{i + 1}</td>
                     <td className="px-6 py-3 font-medium text-slate-800">{p.name}</td>
                     <td className="px-6 py-3 text-slate-500">{p.qty}</td>
-                    <td className="px-6 py-3 font-semibold text-indigo-600">{formatRupiah(p.revenue)}</td>
-                    <td className="px-6 py-3 text-red-400 text-xs">{hpp > 0 ? formatRupiah(hpp) : '—'}</td>
-                    <td className="px-6 py-3 text-xs font-semibold">
+                    <td className="px-6 py-3 font-semibold text-indigo-600 whitespace-nowrap">{formatRupiah(p.revenue)}</td>
+                    <td className="hidden sm:table-cell px-6 py-3 text-red-400 text-xs whitespace-nowrap">{hpp > 0 ? formatRupiah(hpp) : '—'}</td>
+                    <td className="hidden sm:table-cell px-6 py-3 text-xs font-semibold">
                       {hpp > 0 ? (
                         <span className={margin_ >= 60 ? 'text-green-600' : margin_ >= 40 ? 'text-amber-500' : 'text-red-500'}>
                           {margin_.toFixed(0)}%
@@ -324,6 +325,7 @@ export default function DashboardClient({ token }: { token: string | null }) {
               })}
             </tbody>
           </table>
+          </div>
           {productSales.length === 0 && (
             <div className="px-6 py-10 text-center text-slate-400 text-sm">No data for this period</div>
           )}
@@ -358,13 +360,14 @@ export default function DashboardClient({ token }: { token: string | null }) {
           <h3 className="font-semibold text-slate-800">Recent Orders</h3>
           <a href="/orders" className="text-xs text-indigo-600 hover:text-indigo-800 font-medium">View all →</a>
         </div>
+        <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-slate-100">
               <th className="text-left px-6 py-3 text-slate-400 font-medium">Order ID</th>
               <th className="text-left px-6 py-3 text-slate-400 font-medium">Items</th>
               <th className="text-left px-6 py-3 text-slate-400 font-medium">Total</th>
-              <th className="text-left px-6 py-3 text-slate-400 font-medium">Time</th>
+              <th className="hidden sm:table-cell text-left px-6 py-3 text-slate-400 font-medium">Time</th>
               <th className="text-left px-6 py-3 text-slate-400 font-medium">Status</th>
             </tr>
           </thead>
@@ -373,14 +376,14 @@ export default function DashboardClient({ token }: { token: string | null }) {
               const items = o.expand?.order_items_via_order ?? []
               return (
                 <tr key={o.id} className="border-b border-slate-50 hover:bg-slate-50">
-                  <td className="px-6 py-3 font-mono text-xs text-slate-500">{o.id.slice(0, 8)}…</td>
-                  <td className="px-6 py-3 text-slate-700">{items.length} items</td>
-                  <td className="px-6 py-3 font-semibold text-indigo-600">{formatRupiah(o.total)}</td>
-                  <td className="px-6 py-3 text-slate-500 text-xs">
+                  <td className="px-6 py-3 font-mono text-xs text-slate-500 whitespace-nowrap">{o.id.slice(0, 8)}…</td>
+                  <td className="px-6 py-3 text-slate-700 whitespace-nowrap">{items.length} items</td>
+                  <td className="px-6 py-3 font-semibold text-indigo-600 whitespace-nowrap">{formatRupiah(o.total)}</td>
+                  <td className="hidden sm:table-cell px-6 py-3 text-slate-500 text-xs whitespace-nowrap">
                     {o.created ? new Date(o.created).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) : '—'}
                   </td>
                   <td className="px-6 py-3">
-                    <span className="px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700">
+                    <span className="px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700 whitespace-nowrap">
                       {o.status}
                     </span>
                   </td>
@@ -389,6 +392,7 @@ export default function DashboardClient({ token }: { token: string | null }) {
             })}
           </tbody>
         </table>
+        </div>
         {orders.length === 0 && (
           <div className="px-6 py-12 text-center text-slate-400">No orders yet</div>
         )}
