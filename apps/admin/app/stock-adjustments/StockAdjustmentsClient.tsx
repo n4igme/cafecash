@@ -94,23 +94,23 @@ export default function StockAdjustmentsClient({ token }: { token: string | null
   return (
     <div className="p-8">
       <div className="mb-6">
-        <h2 className="text-2xl font-bold text-slate-800">Stock Adjustments</h2>
-        <p className="text-sm text-slate-400 mt-1">Record waste, spoilage, and manual stock corrections</p>
+        <h2 className="text-2xl font-bold text-slate-800">{t('adjustments.title')}</h2>
+        <p className="text-sm text-slate-400 mt-1">{t('adjustments.subtitle')}</p>
       </div>
 
       {/* Quick adjustment form */}
       <div className="bg-white rounded-xl border border-slate-100 shadow-sm p-6 mb-8">
-        <h3 className="font-semibold text-slate-700 mb-4">Record Adjustment</h3>
-        <div className="grid grid-cols-2 gap-4">
+        <h3 className="font-semibold text-slate-700 mb-4">{t('adjustments.record')}</h3>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
 
           {/* Ingredient */}
           <div>
-            <label className="block text-sm font-medium text-slate-600 mb-1">Ingredient</label>
+            <label className="block text-sm font-medium text-slate-600 mb-1">{t('recipes.ingredient')}</label>
             <select className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
               value={form.ingredient} onChange={e => setForm(f => ({ ...f, ingredient: e.target.value }))}>
               {ingredients.map(i => (
                 <option key={i.id} value={i.id}>
-                  {i.name} (stock: {i.stock_qty} {i.unit})
+                  {i.name} ({t('stock_in.current')} {i.stock_qty} {i.unit})
                 </option>
               ))}
             </select>
@@ -118,30 +118,30 @@ export default function StockAdjustmentsClient({ token }: { token: string | null
 
           {/* Reason */}
           <div>
-            <label className="block text-sm font-medium text-slate-600 mb-1">Reason</label>
+            <label className="block text-sm font-medium text-slate-600 mb-1">{t('adjustments.reason')}</label>
             <select className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
               value={form.reason} onChange={e => setForm(f => ({ ...f, reason: e.target.value }))}>
-              {REASONS.map(r => (
-                <option key={r.value} value={r.value}>{r.label} — {r.desc}</option>
-              ))}
+              <option value="waste">{t('adjustments.waste')}</option>
+              <option value="spoilage">{t('adjustments.spoilage')}</option>
+              <option value="correction">{t('adjustments.correction')}</option>
             </select>
           </div>
 
           {/* Qty */}
           <div>
             <label className="block text-sm font-medium text-slate-600 mb-1">
-              Qty ({ingrUnit(form.ingredient)})
-              {isDeduction && <span className="ml-1 text-red-500 text-xs">— will be deducted</span>}
-              {!isDeduction && <span className="ml-1 text-green-500 text-xs">— use +/- for add/remove</span>}
+              {t('stock_in.qty')} ({ingrUnit(form.ingredient)})
+              {isDeduction && <span className="ml-1 text-red-500 text-xs">— {t('adjustments.will_deduct')}</span>}
+              {!isDeduction && <span className="ml-1 text-green-500 text-xs">— {t('adjustments.use_sign')}</span>}
             </label>
-            <input type="number" placeholder={isDeduction ? "e.g. 200 (will deduct 200)" : "e.g. +500 or -100"}
+            <input type="number" placeholder={isDeduction ? "e.g. 200" : "e.g. +500 or -100"}
               className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
               value={form.qty_change} onChange={e => setForm(f => ({ ...f, qty_change: e.target.value }))} />
           </div>
 
           {/* Note */}
           <div>
-            <label className="block text-sm font-medium text-slate-600 mb-1">Note (optional)</label>
+            <label className="block text-sm font-medium text-slate-600 mb-1">{t('common.note')} ({t('common.optional')})</label>
             <input type="text" placeholder="e.g. Susu tumpah, 1 pack expired"
               className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
               value={form.note} onChange={e => setForm(f => ({ ...f, note: e.target.value }))} />
@@ -156,17 +156,17 @@ export default function StockAdjustmentsClient({ token }: { token: string | null
             : 'bg-amber-50 text-amber-700 border border-amber-100'
           }`}>
             {isDeduction
-              ? `Will deduct ${Math.abs(Number(form.qty_change))} ${ingrUnit(form.ingredient)} from ${ingrName(form.ingredient)}`
+              ? `${t('adjustments.preview_deduct')} ${Math.abs(Number(form.qty_change))} ${ingrUnit(form.ingredient)} dari ${ingrName(form.ingredient)}`
               : Number(form.qty_change) > 0
-              ? `Will add ${Number(form.qty_change)} ${ingrUnit(form.ingredient)} to ${ingrName(form.ingredient)}`
-              : `Will remove ${Math.abs(Number(form.qty_change))} ${ingrUnit(form.ingredient)} from ${ingrName(form.ingredient)}`
+              ? `${t('adjustments.preview_add')} ${Number(form.qty_change)} ${ingrUnit(form.ingredient)} ke ${ingrName(form.ingredient)}`
+              : `${t('adjustments.preview_remove')} ${Math.abs(Number(form.qty_change))} ${ingrUnit(form.ingredient)} dari ${ingrName(form.ingredient)}`
             }
           </div>
         )}
 
         <button onClick={save} disabled={saving || !form.ingredient || !form.qty_change || Number(form.qty_change) === 0}
           className="mt-4 px-6 py-2 bg-indigo-600 text-white rounded-lg text-sm font-semibold hover:bg-indigo-700 disabled:opacity-60">
-          {saving ? 'Saving...' : '✓ Record Adjustment'}
+          {saving ? t('common.saving') : t('adjustments.record_btn')}
         </button>
       </div>
 
@@ -187,7 +187,7 @@ export default function StockAdjustmentsClient({ token }: { token: string | null
         </div>
       </div>
 
-      {loading ? <div className="text-slate-400 text-center py-20">Loading...</div> : (
+      {loading ? <div className="text-slate-400 text-center py-20">{t('common.loading')}</div> : (
         <div className="bg-white rounded-xl border border-slate-100 shadow-sm overflow-hidden">
           <div className="overflow-x-auto">
           <table className="w-full text-sm">
