@@ -27,6 +27,10 @@ PB_SUPERUSER_EMAIL    = os.environ.get("PB_SUPERUSER_EMAIL",    "admin@luna.pos"
 PB_SUPERUSER_PASSWORD = os.environ.get("PB_SUPERUSER_PASSWORD", "Admin@2026!")
 ADMIN_USER_EMAIL      = os.environ.get("ADMIN_USER_EMAIL",      "admin@cafecash.pos")
 ADMIN_USER_PASSWORD   = os.environ.get("ADMIN_USER_PASSWORD",   "CafeCash@2026!")
+STAFF_USER_EMAIL      = os.environ.get("STAFF_USER_EMAIL",      "staff@cafecash.pos")
+STAFF_USER_PASSWORD   = os.environ.get("STAFF_USER_PASSWORD",   "Staff@2026!")
+MAID_USER_EMAIL       = os.environ.get("MAID_USER_EMAIL",       "kasir1@cafecash.pos")
+MAID_USER_PASSWORD    = os.environ.get("MAID_USER_PASSWORD",    "Kasir@2026!")
 STORE_NAME            = os.environ.get("STORE_NAME",             "CafeCash")
 
 PASS = 0; FAIL = 0
@@ -75,34 +79,53 @@ if code != 200:
 token = r["token"]
 ok(f"Superuser auth OK ({PB_SUPERUSER_EMAIL})")
 
-# ── 3. Create admin dashboard user ───────────────────────────────────────────
-section("3. Admin dashboard user")
+# ── 3. Create users with roles ───────────────────────────────────────────────
+section("3. Create users (admin / staff / maid)")
 
-# Check if already exists
-users, _ = req("GET", f"/api/collections/users/records?filter=email='{ADMIN_USER_EMAIL}'", token=token)
-existing = users.get("items", [])
-
-if existing:
-    ok(f"Admin user already exists ({ADMIN_USER_EMAIL})")
+# First ensure role field exists on users collection
+users_col, _ = req("GET", "/api/collections/users", token=token)
+col_id = users_col["id"]
+existing_fields = [f["name"] for f in users_col.get("fields", [])]
+if "role" not in existing_fields:
+    new_fields = users_col.get("fields", []) + [{
+        "id": "select_role_field", "name": "role", "type": "select",
+        "required": True, "hidden": False, "presentable": False, "system": False,
+        "help": "", "maxSelect": 1, "values": ["admin", "staff", "maid"]
+    }]
+    r, code = req("PATCH", f"/api/collections/{col_id}", {"fields": new_fields}, token=token)
+    ok("role field added to users collection") if code == 200 else fail("Add role field", r.get("message","?"))
 else:
+    ok("role field already exists")
+
+USERS_TO_CREATE = [
+    {"email": ADMIN_USER_EMAIL,  "password": ADMIN_USER_PASSWORD,  "role": "admin",  "name": "Admin"},
+    {"email": STAFF_USER_EMAIL,  "password": STAFF_USER_PASSWORD,  "role": "staff",  "name": "Staff"},
+    {"email": MAID_USER_EMAIL,   "password": MAID_USER_PASSWORD,   "role": "maid",   "name": "Kasir 1"},
+]
+
+for u in USERS_TO_CREATE:
+    existing, _ = req("GET", f"/api/collections/users/records?filter=email='{u['email']}'", token=token)
+    if existing.get("totalItems", 0) > 0:
+        # Update role if missing
+        rec = existing["items"][0]
+        if not rec.get("role"):
+            req("PATCH", f"/api/collections/users/records/{rec['id']}", {"role": u["role"]}, token=token)
+        ok(f"{u['email']:35s} ({u['role']}) already exists")
+        continue
     r, code = req("POST", "/api/collections/users/records", {
-        "email":           ADMIN_USER_EMAIL,
-        "password":        ADMIN_USER_PASSWORD,
-        "passwordConfirm": ADMIN_USER_PASSWORD,
-        "emailVisibility": True,
+        "email": u["email"], "password": u["password"],
+        "passwordConfirm": u["password"], "name": u["name"],
+        "role": u["role"], "emailVisibility": True,
     }, token=token)
     if code == 200:
-        ok(f"Admin user created ({ADMIN_USER_EMAIL})")
+        ok(f"{u['email']:35s} ({u['role']}) created")
     else:
-        fail(f"Failed to create admin user", r.get("message","?"))
+        fail(f"Create {u['email']}", r.get("message","?"))
 
-# Verify login works
+# Verify admin login
 r2, code2 = req("POST", "/api/collections/users/auth-with-password",
     {"identity": ADMIN_USER_EMAIL, "password": ADMIN_USER_PASSWORD})
-if code2 == 200:
-    ok(f"Admin user login verified")
-else:
-    fail(f"Admin user login failed", r2.get("message","?"))
+ok(f"Admin login verified") if code2 == 200 else fail(f"Admin login failed", r2.get("message","?"))
 
 # ── 4. Create collections ─────────────────────────────────────────────────────
 section("4. Collections")
@@ -276,6 +299,24 @@ else:
         ok("Stock quantities set (50 servings each)")
     else:
         fail("set_stock.py", result.stderr[-200:])
+
+# ── 9. Apply RBAC collection rules ───────────────────────────────────────────
+section("9. Apply RBAC collection rules")
+print("  Running setup_rbac.py...")
+result = subprocess.run(
+    ["python3", "scripts/setup_rbac.py"],
+    capture_output=True, text=True, env={**os.environ, "PYTHONPATH": ""}
+)
+if result.returncode == 0:
+    ok("RBAC collection rules applied")
+else:
+    # setup_rbac also creates users — may fail if run before collections exist
+    # Check if rules were actually applied by checking products rule
+    prods_col, _ = req("GET", "/api/collections/products", token=token)
+    if "@request.auth.role" in str(prods_col.get("deleteRule", "")):
+        ok("RBAC rules already applied")
+    else:
+        fail("setup_rbac.py", result.stderr[-200:])
 
 # ── Summary ───────────────────────────────────────────────────────────────────
 print(f"\n{'═'*55}")
