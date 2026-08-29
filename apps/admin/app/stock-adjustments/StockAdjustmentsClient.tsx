@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react'
 import PocketBase from 'pocketbase'
 import type { Ingredient, StockAdjustment } from '../../../../packages/types'
+import { useT } from '../components/LangProvider'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL!
 
@@ -21,6 +22,7 @@ const REASON_BADGE: Record<string, { label: string; color: string }> = {
 }
 
 export default function StockAdjustmentsClient({ token }: { token: string | null }) {
+  const t = useT()
   const [pb] = useState(() => {
     const c = new PocketBase(API_URL); c.autoCancellation(false)
     if (token) c.authStore.save(token, null); return c
@@ -187,14 +189,15 @@ export default function StockAdjustmentsClient({ token }: { token: string | null
 
       {loading ? <div className="text-slate-400 text-center py-20">Loading...</div> : (
         <div className="bg-white rounded-xl border border-slate-100 shadow-sm overflow-hidden">
+          <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-slate-100 bg-slate-50">
-                <th className="text-left px-6 py-3 text-slate-500 font-medium">Date</th>
-                <th className="text-left px-6 py-3 text-slate-500 font-medium">Ingredient</th>
-                <th className="text-left px-6 py-3 text-slate-500 font-medium">Change</th>
-                <th className="text-left px-6 py-3 text-slate-500 font-medium">Reason</th>
-                <th className="text-left px-6 py-3 text-slate-500 font-medium">Note</th>
+                <th className="text-left px-6 py-3 text-slate-500 font-medium whitespace-nowrap">{t('common.date')}</th>
+                <th className="text-left px-6 py-3 text-slate-500 font-medium whitespace-nowrap">{t('recipes.ingredient')}</th>
+                <th className="text-left px-6 py-3 text-slate-500 font-medium whitespace-nowrap">{t('adjustments.change')}</th>
+                <th className="text-left px-6 py-3 text-slate-500 font-medium whitespace-nowrap">{t('adjustments.reason')}</th>
+                <th className="hidden sm:table-cell text-left px-6 py-3 text-slate-500 font-medium whitespace-nowrap">{t('common.note')}</th>
               </tr>
             </thead>
             <tbody>
@@ -207,23 +210,24 @@ export default function StockAdjustmentsClient({ token }: { token: string | null
                         day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit'
                       }) : '—'}
                     </td>
-                    <td className="px-6 py-3 font-medium text-slate-800">{ingrName(a.ingredient)}</td>
-                    <td className={`px-6 py-3 font-semibold ${a.qty_change >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                    <td className="px-6 py-3 font-medium text-slate-800 whitespace-nowrap">{ingrName(a.ingredient)}</td>
+                    <td className={`px-6 py-3 font-semibold whitespace-nowrap ${a.qty_change >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                       {a.qty_change >= 0 ? '+' : ''}{a.qty_change} {ingrUnit(a.ingredient)}
                     </td>
                     <td className="px-6 py-3">
-                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${badge.color}`}>
+                      <span className={`px-2 py-1 rounded-full text-xs font-medium whitespace-nowrap ${badge.color}`}>
                         {badge.label}
                       </span>
                     </td>
-                    <td className="px-6 py-3 text-slate-400 text-xs">{a.note || '—'}</td>
+                    <td className="hidden sm:table-cell px-6 py-3 text-slate-400 text-xs">{a.note || '—'}</td>
                   </tr>
                 )
               })}
             </tbody>
           </table>
+          </div>
           {filtered.length === 0 && (
-            <div className="px-6 py-12 text-center text-slate-400">No adjustments recorded yet</div>
+            <div className="px-6 py-12 text-center text-slate-400">{t('adjustments.no_history')}</div>
           )}
         </div>
       )}
