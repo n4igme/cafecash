@@ -22,6 +22,9 @@ export const pb = new Proxy({} as PocketBase, {
   },
 })
 
+let _authReadyResolve: () => void
+export const authReady: Promise<void> = new Promise(resolve => { _authReadyResolve = resolve })
+
 /**
  * Authenticate the tablet service account.
  * Called once on app startup (_layout.tsx).
@@ -30,11 +33,11 @@ export const pb = new Proxy({} as PocketBase, {
 export async function initTabletAuth(): Promise<void> {
   const client = getPB()
   // Already authenticated and token still valid
-  if (client.authStore.isValid) return
+  if (client.authStore.isValid) { _authReadyResolve(); return }
 
   if (!TABLET_EMAIL || !TABLET_PASS) {
     console.warn('[CafeCash] Tablet credentials not set — running as anonymous')
-    return
+    _authReadyResolve(); return
   }
 
   try {
@@ -42,5 +45,7 @@ export async function initTabletAuth(): Promise<void> {
     console.log('[CafeCash] Tablet auth OK')
   } catch (e) {
     console.error('[CafeCash] Tablet auth failed:', e)
+  } finally {
+    _authReadyResolve()
   }
 }

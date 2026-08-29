@@ -5,7 +5,7 @@ import {
 } from 'react-native'
 import { useRouter } from 'expo-router'
 import { SafeAreaView } from 'react-native-safe-area-context'
-import { pb } from '../lib/pocketbase'
+import { pb, authReady } from '../lib/pocketbase'
 import { useCart } from '../store/cart'
 import { formatRupiah } from '../lib/format'
 
@@ -31,6 +31,7 @@ export default function ActiveOrdersScreen() {
   const load = useCallback(async () => {
     setLoading(true)
     try {
+      await authReady  // wait for tablet auth before fetching
       const data = await pb.collection('orders').getFullList<OpenOrder>({
         filter: "status = 'open'",
         sort:   '-created',
