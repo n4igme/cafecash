@@ -2,6 +2,7 @@
 import { useEffect, useState, useRef, useMemo } from 'react'
 import PocketBase from 'pocketbase'
 import type { Product } from '../../../../packages/types'
+import { useT } from '../components/LangProvider'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL!
 
@@ -69,6 +70,7 @@ function SortIcon({ col, sortKey, sortDir }: { col: SortKey; sortKey: SortKey; s
 }
 
 export default function ProductsClient({ token }: { token: string | null }) {
+  const t = useT()
   const [pb] = useState(() => {
     const client = new PocketBase(API_URL)
     client.autoCancellation(false)
@@ -199,10 +201,10 @@ export default function ProductsClient({ token }: { token: string | null }) {
   return (
     <div className="p-8">
       <div className="flex items-center justify-between mb-6">
-        <h2 className="text-2xl font-bold text-slate-800">Products</h2>
+        <h2 className="text-2xl font-bold text-slate-800">{t('products.title')}</h2>
         <button onClick={openNew}
           className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-semibold hover:bg-indigo-700 transition-colors">
-          + Add Product
+          {t('products.add')}
         </button>
       </div>
 
@@ -212,7 +214,7 @@ export default function ProductsClient({ token }: { token: string | null }) {
           <div className="relative flex-1 max-w-sm">
             <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">🔍</span>
             <input
-              type="text" placeholder="Search products..."
+              type="text" placeholder={t('common.search')}
               value={search} onChange={e => setSearch(e.target.value)}
               className="w-full pl-9 pr-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
             />
@@ -238,30 +240,30 @@ export default function ProductsClient({ token }: { token: string | null }) {
       </div>
 
       {loading ? (
-        <div className="text-slate-400 text-center py-20">Loading...</div>
+        <div className="text-slate-400 text-center py-20">{t('common.loading')}</div>
       ) : (
         <div className="bg-white rounded-xl border border-slate-100 shadow-sm overflow-hidden">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-slate-100 bg-slate-50">
-                <th className="text-left px-4 py-3 text-slate-500 font-medium w-16">Image</th>
+                <th className="text-left px-4 py-3 text-slate-500 font-medium w-16">{t('products.image')}</th>
                 <th className="text-left px-4 py-3 text-slate-500 font-medium cursor-pointer select-none hover:text-slate-700"
                   onClick={() => toggleSort('name')}>
-                  Name <SortIcon col="name" sortKey={sortKey} sortDir={sortDir} />
+                  {t('common.name')} <SortIcon col="name" sortKey={sortKey} sortDir={sortDir} />
                 </th>
                 <th className="text-left px-4 py-3 text-slate-500 font-medium cursor-pointer select-none hover:text-slate-700"
                   onClick={() => toggleSort('category')}>
-                  Category <SortIcon col="category" sortKey={sortKey} sortDir={sortDir} />
+                  {t('products.category')} <SortIcon col="category" sortKey={sortKey} sortDir={sortDir} />
                 </th>
                 <th className="text-left px-4 py-3 text-slate-500 font-medium cursor-pointer select-none hover:text-slate-700"
                   onClick={() => toggleSort('price')}>
-                  Price <SortIcon col="price" sortKey={sortKey} sortDir={sortDir} />
+                  {t('products.price')} <SortIcon col="price" sortKey={sortKey} sortDir={sortDir} />
                 </th>
                 <th className="text-left px-4 py-3 text-slate-500 font-medium cursor-pointer select-none hover:text-slate-700"
                   onClick={() => toggleSort('status')}>
-                  Status <SortIcon col="status" sortKey={sortKey} sortDir={sortDir} />
+                  {t('common.status')} <SortIcon col="status" sortKey={sortKey} sortDir={sortDir} />
                 </th>
-                <th className="text-left px-4 py-3 text-slate-500 font-medium">Actions</th>
+                <th className="text-left px-4 py-3 text-slate-500 font-medium">{t('common.actions')}</th>
               </tr>
             </thead>
             <tbody>
@@ -296,13 +298,9 @@ export default function ProductsClient({ token }: { token: string | null }) {
                     </td>
                     <td className="px-4 py-3">
                       <button onClick={() => openEdit(p)}
-                        className="text-indigo-600 hover:text-indigo-800 font-medium mr-4">
-                        Edit
-                      </button>
+                        className="text-indigo-600 hover:text-indigo-800 font-medium mr-4">{t('common.edit')}</button>
                       <button onClick={() => del(p.id)}
-                        className="text-red-500 hover:text-red-700 font-medium">
-                        Delete
-                      </button>
+                        className="text-red-500 hover:text-red-700 font-medium">{t('common.delete')}</button>
                     </td>
                   </tr>
                 )
@@ -322,20 +320,20 @@ export default function ProductsClient({ token }: { token: string | null }) {
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
           <div className="bg-white rounded-2xl p-6 w-full max-w-md shadow-xl">
             <h3 className="text-lg font-bold text-slate-800 mb-4">
-              {form.id ? 'Edit Product' : 'New Product'}
+              {form.id ? t('products.edit') : t('products.new')}
             </h3>
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-slate-600 mb-1">Name</label>
+                <label className="block text-sm font-medium text-slate-600 mb-1">{t('common.name')}</label>
                 <input
                   className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
                   value={form.name ?? ''}
                   onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
-                  placeholder="e.g. Americano"
+                  placeholder={t('products.placeholder')}
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-600 mb-1">Price (IDR)</label>
+                <label className="block text-sm font-medium text-slate-600 mb-1">{t('products.price')}</label>
                 <input
                   type="number"
                   className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
@@ -345,7 +343,7 @@ export default function ProductsClient({ token }: { token: string | null }) {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-600 mb-1">Category</label>
+                <label className="block text-sm font-medium text-slate-600 mb-1">{t('products.category')}</label>
                 <select
                   className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
                   value={form.category ?? 'Coffee'}
@@ -357,7 +355,7 @@ export default function ProductsClient({ token }: { token: string | null }) {
 
               {/* Image upload */}
               <div>
-                <label className="block text-sm font-medium text-slate-600 mb-2">Product Image</label>
+                <label className="block text-sm font-medium text-slate-600 mb-2">{t('products.image')}</label>
                 {imagePreview && (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img src={imagePreview} alt="preview"
@@ -374,7 +372,7 @@ export default function ProductsClient({ token }: { token: string | null }) {
                 <label htmlFor="product-image-upload"
                   className="inline-flex items-center gap-2 px-3 py-2 border border-slate-200 rounded-lg
                              text-sm font-medium text-slate-600 hover:bg-slate-50 cursor-pointer transition-colors">
-                  📷 {imagePreview ? 'Change image' : 'Upload image'}
+                  📷 {imagePreview ? t('products.change_image') : t('products.upload_image')}
                 </label>
                 <p className="text-xs text-slate-400 mt-1">PNG, JPG, WebP · max 5MB</p>
               </div>
@@ -387,17 +385,17 @@ export default function ProductsClient({ token }: { token: string | null }) {
                   onChange={e => setForm(f => ({ ...f, is_available: e.target.checked }))}
                   className="w-4 h-4 accent-indigo-600"
                 />
-                <label htmlFor="available" className="text-sm text-slate-600">Available on POS</label>
+                <label htmlFor="available" className="text-sm text-slate-600">{t('products.available_pos')}</label>
               </div>
             </div>
             <div className="flex gap-3 mt-6">
               <button onClick={() => setModal(false)}
                 className="flex-1 py-2 border border-slate-200 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-50">
-                Cancel
+                {t('common.cancel')}
               </button>
               <button onClick={save} disabled={saving}
                 className="flex-1 py-2 bg-indigo-600 rounded-lg text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-60">
-                {saving ? 'Saving...' : 'Save'}
+                {saving ? t('common.saving') : t('common.save')}
               </button>
             </div>
           </div>

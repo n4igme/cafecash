@@ -5,6 +5,7 @@ import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
   CartesianGrid, LineChart, Line,
 } from 'recharts'
+import { useT } from './components/LangProvider'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL!
 
@@ -102,6 +103,7 @@ const RANGES: { label: string; value: Range }[] = [
 ]
 
 export default function DashboardClient({ token }: { token: string | null }) {
+  const t = useT()
   const [pb] = useState(() => {
     const client = new PocketBase(API_URL)
     client.autoCancellation(false)
@@ -159,14 +161,14 @@ export default function DashboardClient({ token }: { token: string | null }) {
   const chartMonthly = buildMonthlyChart(orders)
   const productSales = buildProductSales(filtered)
 
-  if (loading) return <div className="p-8 text-slate-400 text-center py-20">Loading...</div>
+  if (loading) return <div className="p-8 text-slate-400 text-center py-20">{t('common.loading')}</div>
 
   return (
     <div className="p-8 space-y-6">
 
       {/* ── Header + period filter ── */}
       <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-0 sm:justify-between">
-        <h2 className="text-2xl font-bold text-slate-800">Dashboard</h2>
+        <h2 className="text-2xl font-bold text-slate-800">{t('dashboard.title')}</h2>
         <div className="flex flex-wrap gap-2">
           {RANGES.map(r => (
             <button key={r.value} onClick={() => setRange(r.value)}
@@ -225,19 +227,19 @@ export default function DashboardClient({ token }: { token: string | null }) {
           <div className="bg-white rounded-xl p-5 border border-slate-100 shadow-sm">
             <div className="text-2xl mb-2">🏭</div>
             <div className="text-2xl font-bold text-red-500">{formatRupiah(totalHpp)}</div>
-            <div className="text-sm text-slate-400 mt-1">Total HPP (Biaya Bahan)</div>
+            <div className="text-sm text-slate-400 mt-1">{t('dashboard.hpp_total')}</div>
           </div>
           <div className="bg-white rounded-xl p-5 border border-slate-100 shadow-sm">
             <div className="text-2xl mb-2">📈</div>
             <div className="text-2xl font-bold text-green-600">{formatRupiah(grossProfit)}</div>
-            <div className="text-sm text-slate-400 mt-1">Laba Kotor</div>
+            <div className="text-sm text-slate-400 mt-1">{t('dashboard.gross_profit')}</div>
           </div>
           <div className="bg-white rounded-xl p-5 border border-slate-100 shadow-sm">
             <div className="text-2xl mb-2">💹</div>
             <div className={`text-2xl font-bold ${margin >= 60 ? 'text-green-600' : margin >= 40 ? 'text-amber-500' : 'text-red-500'}`}>
               {margin.toFixed(1)}%
             </div>
-            <div className="text-sm text-slate-400 mt-1">Margin Kotor</div>
+            <div className="text-sm text-slate-400 mt-1">{t('dashboard.gross_margin')}</div>
           </div>
         </div>
       )}
@@ -248,8 +250,8 @@ export default function DashboardClient({ token }: { token: string | null }) {
         {/* 7-day bar chart */}
         <div className="bg-white rounded-xl border border-slate-100 shadow-sm p-6">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="font-semibold text-slate-800">Last 7 Days</h3>
-            <span className="text-xs text-slate-400">paid orders</span>
+            <h3 className="font-semibold text-slate-800">{t('dashboard.last_7_days')}</h3>
+            <span className="text-xs text-slate-400">{t('dashboard.paid_orders')}</span>
           </div>
           <ResponsiveContainer width="100%" height={180}>
             <BarChart data={chart7Day} margin={{ top: 4, right: 4, left: 8, bottom: 4 }}>
@@ -266,8 +268,8 @@ export default function DashboardClient({ token }: { token: string | null }) {
         {/* 12-month line chart */}
         <div className="bg-white rounded-xl border border-slate-100 shadow-sm p-6">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="font-semibold text-slate-800">Monthly Revenue Trend</h3>
-            <span className="text-xs text-slate-400">Last 12 months</span>
+            <h3 className="font-semibold text-slate-800">{t('dashboard.monthly_trend')}</h3>
+            <span className="text-xs text-slate-400">{t('dashboard.last_12_months')}</span>
           </div>
           <ResponsiveContainer width="100%" height={180}>
             <LineChart data={chartMonthly} margin={{ top: 4, right: 4, left: 8, bottom: 4 }}>
@@ -288,18 +290,18 @@ export default function DashboardClient({ token }: { token: string | null }) {
         {/* Sales table */}
         <div className="bg-white rounded-xl border border-slate-100 shadow-sm overflow-hidden">
           <div className="px-6 py-4 border-b border-slate-100">
-            <h3 className="font-semibold text-slate-800">Sales by Product</h3>
+            <h3 className="font-semibold text-slate-800">{t('dashboard.sales_by_product')}</h3>
           </div>
           <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-slate-50 bg-slate-50">
                 <th className="text-left px-6 py-3 text-slate-500 font-medium">#</th>
-                <th className="text-left px-6 py-3 text-slate-500 font-medium">Product</th>
-                <th className="text-left px-6 py-3 text-slate-500 font-medium">Qty</th>
-                <th className="text-left px-6 py-3 text-slate-500 font-medium">Revenue</th>
+                <th className="text-left px-6 py-3 text-slate-500 font-medium">{t('common.name')}</th>
+                <th className="text-left px-6 py-3 text-slate-500 font-medium">{t('dashboard.qty_sold')}</th>
+                <th className="text-left px-6 py-3 text-slate-500 font-medium">{t('dashboard.revenue')}</th>
                 <th className="hidden sm:table-cell text-left px-6 py-3 text-slate-500 font-medium">HPP</th>
-                <th className="hidden sm:table-cell text-left px-6 py-3 text-slate-500 font-medium">Margin</th>
+                <th className="hidden sm:table-cell text-left px-6 py-3 text-slate-500 font-medium">{t('common.status')}</th>
               </tr>
             </thead>
             <tbody>
@@ -327,15 +329,15 @@ export default function DashboardClient({ token }: { token: string | null }) {
           </table>
           </div>
           {productSales.length === 0 && (
-            <div className="px-6 py-10 text-center text-slate-400 text-sm">No data for this period</div>
+            <div className="px-6 py-10 text-center text-slate-400 text-sm">{t('dashboard.no_data_period')}</div>
           )}
         </div>
 
         {/* Top products bar */}
         <div className="bg-white rounded-xl border border-slate-100 shadow-sm p-6">
-          <h3 className="font-semibold text-slate-800 mb-4">Top Products</h3>
+          <h3 className="font-semibold text-slate-800 mb-4">{t('dashboard.top_products')}</h3>
           {productSales.length === 0 ? (
-            <div className="text-slate-400 text-sm text-center py-10">No data for this period</div>
+            <div className="text-slate-400 text-sm text-center py-10">{t('dashboard.no_data_period')}</div>
           ) : (
             <ResponsiveContainer width="100%" height={220}>
               <BarChart data={productSales.slice(0, 6)} layout="vertical"
@@ -357,18 +359,18 @@ export default function DashboardClient({ token }: { token: string | null }) {
       {/* ── Recent orders ── */}
       <div className="bg-white rounded-xl border border-slate-100 shadow-sm">
         <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
-          <h3 className="font-semibold text-slate-800">Recent Orders</h3>
-          <a href="/orders" className="text-xs text-indigo-600 hover:text-indigo-800 font-medium">View all →</a>
+          <h3 className="font-semibold text-slate-800">{t('dashboard.recent_orders')}</h3>
+          <a href="/orders" className="text-xs text-indigo-600 hover:text-indigo-800 font-medium">{t('dashboard.view_all')}</a>
         </div>
         <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-slate-100">
               <th className="text-left px-6 py-3 text-slate-400 font-medium">Order ID</th>
-              <th className="text-left px-6 py-3 text-slate-400 font-medium">Items</th>
-              <th className="text-left px-6 py-3 text-slate-400 font-medium">Total</th>
-              <th className="hidden sm:table-cell text-left px-6 py-3 text-slate-400 font-medium">Time</th>
-              <th className="text-left px-6 py-3 text-slate-400 font-medium">Status</th>
+              <th className="text-left px-6 py-3 text-slate-400 font-medium">{t('orders.items')}</th>
+              <th className="text-left px-6 py-3 text-slate-400 font-medium">{t('common.total')}</th>
+              <th className="hidden sm:table-cell text-left px-6 py-3 text-slate-400 font-medium">{t('common.date')}</th>
+              <th className="text-left px-6 py-3 text-slate-400 font-medium">{t('common.status')}</th>
             </tr>
           </thead>
           <tbody>
@@ -394,7 +396,7 @@ export default function DashboardClient({ token }: { token: string | null }) {
         </table>
         </div>
         {orders.length === 0 && (
-          <div className="px-6 py-12 text-center text-slate-400">No orders yet</div>
+          <div className="px-6 py-12 text-center text-slate-400">{t('common.no_data')}</div>
         )}
       </div>
     </div>
