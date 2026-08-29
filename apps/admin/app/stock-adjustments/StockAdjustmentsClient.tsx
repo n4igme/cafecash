@@ -171,9 +171,9 @@ export default function StockAdjustmentsClient({ token }: { token: string | null
       </div>
 
       {/* Filter + history */}
-      <div className="flex items-center justify-between mb-3">
-        <h3 className="font-semibold text-slate-700">Adjustment History</h3>
-        <div className="flex gap-2">
+      <div className="flex flex-col gap-2 mb-3">
+        <h3 className="font-semibold text-slate-700">{t('adjustments.history')}</h3>
+        <div className="flex flex-wrap gap-2">
           {['all', 'waste', 'spoilage', 'correction', 'order_deduct', 'order_restore'].map(r => (
             <button key={r} onClick={() => setFilterReason(r)}
               className={`px-3 py-1 rounded-lg text-xs font-medium transition-colors ${
@@ -181,7 +181,7 @@ export default function StockAdjustmentsClient({ token }: { token: string | null
                   ? 'bg-indigo-600 text-white'
                   : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'
               }`}>
-              {r === 'all' ? 'All' : REASON_BADGE[r]?.label ?? r}
+              {r === 'all' ? t('common.all') : REASON_BADGE[r]?.label ?? r}
             </button>
           ))}
         </div>
