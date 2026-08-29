@@ -47,6 +47,12 @@ r2, code2 = req("POST", "/api/collections/users/auth-with-password",
 staff_token = r2.get("token")
 ok("Staff auth", code2 == 200 and staff_token, f"code={code2}")
 
+# Maid token — for order creation (maid role required)
+r3, code3 = req("POST", "/api/collections/users/auth-with-password",
+    {"identity": "kasir1@cafecash.pos", "password": "Kasir@2026!"})
+maid_token = r3.get("token")
+ok("Maid auth", code3 == 200 and maid_token, f"code={code3}")
+
 # ── 2. Products ───────────────────────────────────────────────────────────────
 section("2. Products")
 r, _ = req("GET", "/api/collections/products/records?perPage=100", token=token)
@@ -79,7 +85,7 @@ print(f"     Whole Milk stock:    {milk['stock_qty'] if milk else '?'} ml")
 # ── 4. Create new order ───────────────────────────────────────────────────────
 section("4. Create Open Order")
 r, code = req("POST", "/api/collections/orders/records",
-    {"customer_name": "Budi (Test)", "status": "open", "total": 0})
+    {"customer_name": "Budi (Test)", "status": "open", "total": 0}, token=maid_token)
 ok("Create open order", code == 200, r.get("message"))
 order_id = r.get("id")
 print(f"     Order ID: {order_id}")
@@ -93,7 +99,7 @@ items_to_add = [
 item_ids = []
 for item in items_to_add:
     r, code = req("POST", "/api/collections/order_items/records",
-        {**item, "order": order_id})
+        {**item, "order": order_id}, token=maid_token)
     ok(f"Add {item['quantity']}x {item['product_name']}", code == 200, r.get("message"))
     if code == 200: item_ids.append(r["id"])
 
@@ -152,7 +158,7 @@ new_items = items_to_add + [
 # Add new item to DB
 r, code = req("POST", "/api/collections/order_items/records",
     {"order": order_id, "product": matcha["id"], "product_name": "Matcha Latte",
-     "price": matcha["price"], "quantity": 1})
+     "price": matcha["price"], "quantity": 1}, token=maid_token)
 ok("Add 1x Matcha Latte to order", code == 200)
 
 # Deduct new
@@ -184,7 +190,7 @@ ok("Stock unchanged after payment (deducted at save, not pay)",
 # ── 9. Create & cancel order (verify stock restore) ───────────────────────────
 section("9. Cancel Order → Stock Restore")
 r, code = req("POST", "/api/collections/orders/records",
-    {"customer_name": "Siti (Cancel Test)", "status": "open", "total": 0})
+    {"customer_name": "Siti (Cancel Test)", "status": "open", "total": 0}, token=maid_token)
 cancel_order_id = r.get("id")
 ok("Create order to cancel", code == 200)
 
@@ -193,7 +199,7 @@ cancel_items = [
 ]
 req("POST", "/api/collections/order_items/records",
     {"order": cancel_order_id, "product": americano["id"],
-     "product_name": "Americano", "price": americano["price"], "quantity": 1})
+     "product_name": "Americano", "price": americano["price"], "quantity": 1}, token=maid_token)
 deduct_stock(cancel_items, direction=1)
 
 r_before, _ = req("GET", f"/api/collections/ingredients/records/{espresso['id']}", token=token)

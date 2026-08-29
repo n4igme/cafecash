@@ -35,8 +35,8 @@ r, _ = req("POST", "/api/collections/users/auth-with-password",
 admin_token = r["token"]; ok("Admin user")
 
 r, code = req("POST", "/api/collections/users/auth-with-password",
-    {"identity": "tablet@cafecash.pos", "password": "Tablet@JRv7krz7c3sKyJ7j!"})
-tablet_token = r.get("token"); ok("Tablet service account") if code == 200 else fail("Tablet auth", r.get("message"))
+    {"identity": "kasir1@cafecash.pos", "password": "Kasir@2026!"})
+tablet_token = r.get("token"); ok("Tablet auth") if code == 200 and tablet_token else fail("Tablet auth", r.get("message"))
 
 # ── 1. Anonymous access ───────────────────────────────────────────────────────
 section("1. Anonymous — should be BLOCKED")
@@ -77,16 +77,17 @@ if order_id:
         {"status": "paid", "total": 22000, "payment_method": "cash"}, token=tablet_token)
     ok("Update order status (tablet)") if code == 200 else fail("Update order failed", r.get("message"))
 
-# Read ingredients (should work for stock deduction)
+# Read ingredients (maid can't list — returns 0 items, by design)
 r, code = req("GET", "/api/collections/ingredients/records?perPage=1", token=tablet_token)
-ok(f"Read ingredients (tablet)") if code == 200 else fail("Read ingredients failed", f"HTTP {code}")
+ok("Ingredients list blocked for maid (returns 0)") if r.get("totalItems", 0) == 0 else fail("Ingredients should be hidden from maid")
 
-# Update ingredient stock_qty (stock deduction)
-if r.get("items"):
-    ingr = r["items"][0]
+# Update ingredient stock_qty (stock deduction) — maid CAN update, get ID via superuser
+r_ingr, _ = req("GET", "/api/collections/ingredients/records?perPage=1", token=super_token)
+ingr = r_ingr["items"][0] if r_ingr.get("items") else None
+if ingr:
     r2, code2 = req("PATCH", f"/api/collections/ingredients/records/{ingr['id']}",
         {"stock_qty": ingr["stock_qty"]}, token=tablet_token)
-    ok("Update ingredient stock (tablet)") if code2 == 200 else fail("Update ingredient failed", r2.get("message"))
+    ok("Update ingredient stock (maid)") if code2 == 200 else fail("Update ingredient failed", r2.get("message","?"))
 
 # Create stock adjustment log
 ingr_id = ingr["id"] if ingr else ""
