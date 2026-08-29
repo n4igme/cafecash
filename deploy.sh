@@ -47,6 +47,16 @@ fi
 deploy_admin() {
     header "Admin Docker deployment"
 
+    # Sync IP from .env.local → docker-compose.yml + Dockerfile.admin
+    CURRENT_COMPOSE_IP=$(grep "NEXT_PUBLIC_API_URL" docker-compose.yml | head -1 | cut -d'/' -f3 | cut -d':' -f1)
+    if [[ "$CURRENT_COMPOSE_IP" != "$ADMIN_IP" ]]; then
+        log "Syncing IP: $CURRENT_COMPOSE_IP → $ADMIN_IP in docker-compose.yml + Dockerfile.admin"
+        sed -i '' "s/${CURRENT_COMPOSE_IP}/${ADMIN_IP}/g" docker-compose.yml Dockerfile.admin
+        ok "IP updated in docker-compose.yml + Dockerfile.admin"
+    else
+        ok "IPs already in sync ($ADMIN_IP)"
+    fi
+
     log "Building admin image..."
     docker compose build admin 2>&1 | grep -E "Built|Step|ERROR" | head -20
     ok "Admin image built"
