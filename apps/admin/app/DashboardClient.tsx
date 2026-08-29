@@ -6,6 +6,7 @@ import {
   CartesianGrid, LineChart, Line,
 } from 'recharts'
 import { useT } from './components/LangProvider'
+import type { Lang } from '../lib/i18n'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL!
 
@@ -102,7 +103,7 @@ const RANGES: { label: string; value: Range }[] = [
   { label: 'All Time',   value: 'all'   },
 ]
 
-export default function DashboardClient({ token }: { token: string | null }) {
+export default function DashboardClient({ token, role = 'admin' }: { token: string | null; role?: 'admin' | 'staff' | 'maid' }) {
   const t = useT()
   const [pb] = useState(() => {
     const client = new PocketBase(API_URL)
@@ -221,8 +222,8 @@ export default function DashboardClient({ token }: { token: string | null }) {
         ))}
       </div>
 
-      {/* ── HPP / Margin cards ── */}
-      {omset > 0 && (
+      {/* ── HPP / Margin cards — admin only ── */}
+      {omset > 0 && role === 'admin' && (
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div className="bg-white rounded-xl p-5 border border-slate-100 shadow-sm">
             <div className="text-2xl mb-2">🏭</div>
@@ -300,8 +301,8 @@ export default function DashboardClient({ token }: { token: string | null }) {
                 <th className="text-left px-6 py-3 text-slate-500 font-medium">{t('common.name')}</th>
                 <th className="text-left px-6 py-3 text-slate-500 font-medium">{t('dashboard.qty_sold')}</th>
                 <th className="text-left px-6 py-3 text-slate-500 font-medium">{t('dashboard.revenue')}</th>
-                <th className="hidden sm:table-cell text-left px-6 py-3 text-slate-500 font-medium">HPP</th>
-                <th className="hidden sm:table-cell text-left px-6 py-3 text-slate-500 font-medium">{t('common.status')}</th>
+                {role === 'admin' && <th className="hidden sm:table-cell text-left px-6 py-3 text-slate-500 font-medium">HPP</th>}
+                {role === 'admin' && <th className="hidden sm:table-cell text-left px-6 py-3 text-slate-500 font-medium">{t('common.status')}</th>}
               </tr>
             </thead>
             <tbody>
@@ -314,14 +315,14 @@ export default function DashboardClient({ token }: { token: string | null }) {
                     <td className="px-6 py-3 font-medium text-slate-800">{p.name}</td>
                     <td className="px-6 py-3 text-slate-500">{p.qty}</td>
                     <td className="px-6 py-3 font-semibold text-indigo-600 whitespace-nowrap">{formatRupiah(p.revenue)}</td>
-                    <td className="hidden sm:table-cell px-6 py-3 text-red-400 text-xs whitespace-nowrap">{hpp > 0 ? formatRupiah(hpp) : '—'}</td>
-                    <td className="hidden sm:table-cell px-6 py-3 text-xs font-semibold">
+                    {role === 'admin' && <td className="hidden sm:table-cell px-6 py-3 text-red-400 text-xs whitespace-nowrap">{hpp > 0 ? formatRupiah(hpp) : '—'}</td>}
+                    {role === 'admin' && <td className="hidden sm:table-cell px-6 py-3 text-xs font-semibold">
                       {hpp > 0 ? (
                         <span className={margin_ >= 60 ? 'text-green-600' : margin_ >= 40 ? 'text-amber-500' : 'text-red-500'}>
                           {margin_.toFixed(0)}%
                         </span>
                       ) : '—'}
-                    </td>
+                    </td>}
                   </tr>
                 )
               })}
