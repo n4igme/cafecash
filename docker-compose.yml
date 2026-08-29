@@ -23,13 +23,13 @@ services:
       dockerfile: Dockerfile.admin
       args:
         # Baked into the Next.js client bundle — Tailscale IP for browser calls
-        NEXT_PUBLIC_API_URL: http://100.85.162.13:8091
+        NEXT_PUBLIC_API_URL: http://100.89.64.105:8091
     container_name: cafecash-admin
     restart: unless-stopped
     ports:
       - "3001:3000"        # host:container (3000 taken by Mythic)
     environment:
-      NEXT_PUBLIC_API_URL: http://100.85.162.13:8091
+      NEXT_PUBLIC_API_URL: http://100.89.64.105:8091
       # Server-side Next.js calls use Docker-internal network
       PB_SERVER_URL: http://pocketbase:8090
     depends_on:
