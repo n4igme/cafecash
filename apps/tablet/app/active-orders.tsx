@@ -5,7 +5,7 @@ import {
 } from 'react-native'
 import { useRouter } from 'expo-router'
 import { SafeAreaView } from 'react-native-safe-area-context'
-import { pb, authReady } from '../lib/pocketbase'
+import { pb, authReady, logout, getCurrentUser } from '../lib/pocketbase'
 import { useCart } from '../store/cart'
 import { formatRupiah } from '../lib/format'
 
@@ -83,12 +83,24 @@ export default function ActiveOrdersScreen() {
     router.push('/pos')
   }
 
+  const handleLogout = () => {
+    Alert.alert('Keluar', 'Yakin mau keluar?', [
+      { text: 'Batal', style: 'cancel' },
+      { text: 'Keluar', style: 'destructive', onPress: () => { logout(); router.replace('/login') } },
+    ])
+  }
+
   return (
     <SafeAreaView style={styles.root}>
       {/* Header */}
       <View style={styles.header}>
         <Text style={styles.logo}>{logoEmoji} {storeName}</Text>
-        <Text style={styles.headerSub}>Active Orders</Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+          <Text style={styles.headerSub}>{getCurrentUser()?.name || getCurrentUser()?.email || 'Kasir'}</Text>
+          <TouchableOpacity onPress={handleLogout} style={styles.logoutBtn}>
+            <Text style={styles.logoutBtnText}>Keluar</Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* New order input */}
@@ -179,6 +191,13 @@ const styles = StyleSheet.create({
   emptyIcon: { fontSize: 48, marginBottom: 12 },
   emptyText: { fontSize: 18, fontWeight: '700', color: '#1e293b' },
   emptySub:  { fontSize: 13, color: '#94a3b8', marginTop: 4 },
+
+  logoutBtn: {
+    paddingHorizontal: 12, paddingVertical: 6,
+    borderRadius: 8, borderWidth: 1, borderColor: '#e2e8f0',
+    backgroundColor: '#fff',
+  },
+  logoutBtnText: { fontSize: 12, color: '#64748b', fontWeight: '600' },
 
   list: { padding: 12 },
   orderCard: {

@@ -19,11 +19,12 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   const token  = cookieStore.get('pb_auth')?.value
   const email  = cookieStore.get('pb_email')?.value
   const lang   = (cookieStore.get('lang')?.value ?? 'id') as Lang
+  const role   = (cookieStore.get('pb_role')?.value ?? 'staff') as 'admin' | 'staff' | 'maid'
 
   let storeName = 'CafeCash'
   let logoEmoji = '☕'
   let logoUrl: string | null = null
-  const apiUrl   = process.env.PB_SERVER_URL ?? process.env.NEXT_PUBLIC_API_URL!
+  const apiUrl    = process.env.PB_SERVER_URL ?? process.env.NEXT_PUBLIC_API_URL!
   const publicApi = process.env.NEXT_PUBLIC_API_URL!
 
   if (token) {
@@ -39,19 +40,19 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   }
 
   const nav = [
-    { href: '/',           icon: '📊', label: t('nav.dashboard', lang) },
-    { href: '/products',   icon: '🛍️', label: t('nav.products', lang) },
-    { href: '/orders',     icon: '📋', label: t('nav.orders', lang) },
-    { href: '/users',      icon: '👤', label: t('nav.users', lang) },
-    { href: '/settings',   icon: '⚙️', label: t('nav.settings', lang) },
-  ]
+    { href: '/',           icon: '📊', label: t('nav.dashboard', lang),  roles: ['admin', 'staff'] },
+    { href: '/products',   icon: '🛍️', label: t('nav.products', lang),   roles: ['admin', 'staff'] },
+    { href: '/orders',     icon: '📋', label: t('nav.orders', lang),      roles: ['admin', 'staff'] },
+    { href: '/users',      icon: '👤', label: t('nav.users', lang),       roles: ['admin'] },
+    { href: '/settings',   icon: '⚙️', label: t('nav.settings', lang),   roles: ['admin'] },
+  ].filter(n => n.roles.includes(role))
 
   const stockNav = [
-    { href: '/ingredients',       icon: '🧪', label: t('nav.ingredients', lang) },
-    { href: '/recipes',           icon: '📋', label: t('nav.recipes', lang) },
-    { href: '/stock-in',          icon: '📦', label: t('nav.stock_in', lang) },
-    { href: '/stock-adjustments', icon: '⚡', label: t('nav.adjustments', lang) },
-  ]
+    { href: '/ingredients',       icon: '🧪', label: t('nav.ingredients', lang), roles: ['admin', 'staff'] },
+    { href: '/recipes',           icon: '📋', label: t('nav.recipes', lang),      roles: ['admin', 'staff'] },
+    { href: '/stock-in',          icon: '📦', label: t('nav.stock_in', lang),     roles: ['admin', 'staff'] },
+    { href: '/stock-adjustments', icon: '⚡', label: t('nav.adjustments', lang),  roles: ['admin', 'staff'] },
+  ].filter(n => n.roles.includes(role))
 
   return (
     <html lang={lang}>
@@ -64,13 +65,13 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                 logoEmoji={logoEmoji}
                 logoUrl={logoUrl}
                 email={email}
+                role={role}
                 nav={nav}
                 stockNav={stockNav}
                 adminDashboardLabel={t('nav.admin_dashboard', lang)}
                 stockLabel={t('nav.stock', lang)}
               />
             )}
-            {/* pt-14 on mobile to account for fixed top bar */}
             <main className="flex-1 overflow-auto pt-14 lg:pt-0">{children}</main>
           </div>
         </LangProvider>

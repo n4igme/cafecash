@@ -1,20 +1,33 @@
-// Polyfill EventSource for PocketBase realtime (not available in Hermes)
+// Polyfill EventSource for PocketBase realtime
 import EventSource from 'react-native-sse'
 if (typeof global.EventSource === 'undefined') {
   // @ts-ignore
   global.EventSource = EventSource
 }
 
-import { useEffect } from 'react'
-import { Stack } from 'expo-router'
+import { useEffect, useState } from 'react'
+import { Stack, useRouter, useSegments } from 'expo-router'
 import { SafeAreaProvider } from 'react-native-safe-area-context'
-import { initTabletAuth } from '../lib/pocketbase'
+import { getCurrentUser } from '../lib/pocketbase'
 
 export default function RootLayout() {
+  const router   = useRouter()
+  const segments = useSegments()
+  const [ready, setReady] = useState(false)
+
   useEffect(() => {
-    // Authenticate tablet service account on startup
-    initTabletAuth()
+    const user = getCurrentUser()
+    const inAuth = segments[0] === 'login'
+
+    if (!user && !inAuth) {
+      router.replace('/login')
+    } else if (user && inAuth) {
+      router.replace('/active-orders')
+    }
+    setReady(true)
   }, [])
+
+  if (!ready) return null
 
   return (
     <SafeAreaProvider>

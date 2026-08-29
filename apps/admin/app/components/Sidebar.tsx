@@ -10,17 +10,25 @@ interface SidebarProps {
   logoEmoji: string
   logoUrl:   string | null
   email:     string
+  role:      string
   nav:       NavItem[]
   stockNav:  NavItem[]
   adminDashboardLabel: string
   stockLabel: string
 }
 
+const ROLE_BADGE: Record<string, { label: string; color: string }> = {
+  admin: { label: 'Admin',  color: 'bg-indigo-100 text-indigo-700' },
+  staff: { label: 'Staff',  color: 'bg-green-100 text-green-700' },
+  maid:  { label: 'Kasir',  color: 'bg-amber-100 text-amber-700' },
+}
+
 export default function Sidebar({
-  storeName, logoEmoji, logoUrl, email,
+  storeName, logoEmoji, logoUrl, email, role,
   nav, stockNav, adminDashboardLabel, stockLabel,
 }: SidebarProps) {
   const [open, setOpen] = useState(false)
+  const badge = ROLE_BADGE[role] ?? ROLE_BADGE['staff']
 
   const SidebarContent = () => (
     <>
@@ -46,23 +54,30 @@ export default function Sidebar({
             {n.icon} {n.label}
           </a>
         ))}
-        <div className="pt-2 border-t border-slate-100 mt-1">
-          <p className="px-3 py-1 text-xs font-semibold text-slate-400 uppercase tracking-wider">
-            {stockLabel}
-          </p>
-          {stockNav.map(n => (
-            <a key={n.href} href={n.href} onClick={() => setOpen(false)}
-              className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-slate-700 hover:bg-slate-100 transition-colors">
-              {n.icon} {n.label}
-            </a>
-          ))}
-        </div>
+        {stockNav.length > 0 && (
+          <div className="pt-2 border-t border-slate-100 mt-1">
+            <p className="px-3 py-1 text-xs font-semibold text-slate-400 uppercase tracking-wider">
+              {stockLabel}
+            </p>
+            {stockNav.map(n => (
+              <a key={n.href} href={n.href} onClick={() => setOpen(false)}
+                className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-slate-700 hover:bg-slate-100 transition-colors">
+                {n.icon} {n.label}
+              </a>
+            ))}
+          </div>
+        )}
       </nav>
 
       {/* Footer */}
       <div className="p-4 border-t border-slate-100 space-y-2">
-        <div className="flex items-center justify-between">
-          <p className="text-xs text-slate-500 truncate">{email}</p>
+        <div className="flex items-center justify-between gap-2">
+          <div className="min-w-0">
+            <p className="text-xs text-slate-500 truncate">{email}</p>
+            <span className={`inline-block mt-0.5 px-2 py-0.5 rounded-full text-xs font-medium ${badge.color}`}>
+              {badge.label}
+            </span>
+          </div>
           <LangToggle />
         </div>
         <LogoutButton />
