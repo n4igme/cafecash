@@ -5,8 +5,16 @@ import { useT } from '../components/LangProvider'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL!
 
-interface User { id: string; email: string; name: string; created: string }
-const EMPTY = { email: '', name: '', password: '', passwordConfirm: '' }
+type Role = 'admin' | 'staff' | 'maid'
+
+interface User { id: string; email: string; name: string; role: Role; created: string }
+const EMPTY = { email: '', name: '', password: '', passwordConfirm: '', role: 'maid' as Role }
+
+const ROLE_BADGE: Record<Role, { label: string; color: string }> = {
+  admin: { label: 'Admin',  color: 'bg-indigo-100 text-indigo-700' },
+  staff: { label: 'Staff',  color: 'bg-green-100 text-green-700' },
+  maid:  { label: 'Kasir',  color: 'bg-amber-100 text-amber-700' },
+}
 
 export default function UsersClient({ token }: { token: string | null }) {
   const t = useT()
@@ -24,10 +32,7 @@ export default function UsersClient({ token }: { token: string | null }) {
 
   const load = async () => {
     setLoading(true)
-    const data = await pb.collection('users').getFullList<User>({
-      sort: 'created',
-      filter: "email != 'tablet@cafecash.pos'",  // hide service accounts
-    })
+    const data = await pb.collection('users').getFullList<User>({ sort: 'role,created' })
     setUsers(data); setLoading(false)
   }
 
@@ -35,7 +40,7 @@ export default function UsersClient({ token }: { token: string | null }) {
 
   const openAdd = () => { setForm(EMPTY); setEditId(null); setError(null); setModal('add') }
   const openEdit = (u: User) => {
-    setForm({ email: u.email, name: u.name, password: '', passwordConfirm: '' })
+    setForm({ email: u.email, name: u.name, password: '', passwordConfirm: '', role: u.role ?? 'maid' })
     setEditId(u.id); setError(null); setModal('edit')
   }
 
@@ -51,10 +56,13 @@ export default function UsersClient({ token }: { token: string | null }) {
     setSaving(true); setError(null)
     try {
       if (modal === 'add') {
-        await pb.collection('users').create({ email: form.email, name: form.name,
-          password: form.password, passwordConfirm: form.passwordConfirm })
+        await pb.collection('users').create({
+          email: form.email, name: form.name, role: form.role,
+          password: form.password, passwordConfirm: form.passwordConfirm,
+          emailVisibility: true,
+        })
       } else if (editId) {
-        const payload: Record<string, string> = { email: form.email, name: form.name }
+        const payload: Record<string, string> = { email: form.email, name: form.name, role: form.role }
         if (form.password) { payload.password = form.password; payload.passwordConfirm = form.passwordConfirm }
         await pb.collection('users').update(editId, payload)
       }
@@ -91,26 +99,35 @@ export default function UsersClient({ token }: { token: string | null }) {
               <tr className="border-b border-slate-100 bg-slate-50">
                 <th className="text-left px-6 py-3 text-slate-500 font-medium">{t('users.email')}</th>
                 <th className="text-left px-6 py-3 text-slate-500 font-medium">{t('common.name')}</th>
+                <th className="text-left px-6 py-3 text-slate-500 font-medium">Role</th>
                 <th className="text-left px-6 py-3 text-slate-500 font-medium">{t('users.created')}</th>
                 <th className="text-left px-6 py-3 text-slate-500 font-medium">{t('common.actions')}</th>
               </tr>
             </thead>
             <tbody>
-              {users.map(u => (
-                <tr key={u.id} className="border-b border-slate-50 hover:bg-slate-50">
-                  <td className="px-6 py-3 font-medium text-slate-800">{u.email}</td>
-                  <td className="px-6 py-3 text-slate-500">{u.name || '—'}</td>
-                  <td className="px-6 py-3 text-slate-400 text-xs">
-                    {u.created ? new Date(u.created).toLocaleDateString('id-ID', {
-                      day: '2-digit', month: 'short', year: 'numeric',
-                    }) : '—'}
-                  </td>
-                  <td className="px-6 py-3">
-                    <button onClick={() => openEdit(u)} className="text-indigo-600 hover:text-indigo-800 font-medium mr-4">{t('common.edit')}</button>
-                    <button onClick={() => del(u.id, u.email)} className="text-red-500 hover:text-red-700 font-medium">{t('common.delete')}</button>
-                  </td>
-                </tr>
-              ))}
+              {users.map(u => {
+                const badge = ROLE_BADGE[u.role] ?? ROLE_BADGE['maid']
+                return (
+                  <tr key={u.id} className="border-b border-slate-50 hover:bg-slate-50">
+                    <td className="px-6 py-3 font-medium text-slate-800">{u.email}</td>
+                    <td className="px-6 py-3 text-slate-500">{u.name || '—'}</td>
+                    <td className="px-6 py-3">
+                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${badge.color}`}>
+                        {badge.label}
+                      </span>
+                    </td>
+                    <td className="px-6 py-3 text-slate-400 text-xs">
+                      {u.created ? new Date(u.created).toLocaleDateString('id-ID', {
+                        day: '2-digit', month: 'short', year: 'numeric',
+                      }) : '—'}
+                    </td>
+                    <td className="px-6 py-3">
+                      <button onClick={() => openEdit(u)} className="text-indigo-600 hover:text-indigo-800 font-medium mr-4">{t('common.edit')}</button>
+                      <button onClick={() => del(u.id, u.email)} className="text-red-500 hover:text-red-700 font-medium">{t('common.delete')}</button>
+                    </td>
+                  </tr>
+                )
+              })}
             </tbody>
           </table>
           {users.length === 0 && <div className="px-6 py-12 text-center text-slate-400">{t('users.no_users')}</div>}
@@ -128,13 +145,28 @@ export default function UsersClient({ token }: { token: string | null }) {
                 <label className="block text-sm font-medium text-slate-600 mb-1">{t('users.email')}</label>
                 <input type="email"
                   className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
-                  value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} placeholder="admin@cafecash.pos" />
+                  value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} placeholder="kasir1@cafecash.pos" />
               </div>
               <div>
                 <label className="block text-sm font-medium text-slate-600 mb-1">{t('common.name')}</label>
                 <input type="text"
                   className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
-                  value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="e.g. Admin" />
+                  value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="e.g. Kasir 1" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-600 mb-1">Role</label>
+                <select
+                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                  value={form.role} onChange={e => setForm(f => ({ ...f, role: e.target.value as Role }))}>
+                  <option value="admin">Admin — akses penuh</option>
+                  <option value="staff">Staff — operasional (produk, stok, pesanan)</option>
+                  <option value="maid">Kasir — POS tablet saja</option>
+                </select>
+                <p className="text-xs text-slate-400 mt-1">
+                  {form.role === 'admin' && 'Akses ke semua fitur termasuk laporan keuangan & manajemen user'}
+                  {form.role === 'staff' && 'Bisa kelola produk, stok, pesanan — tidak bisa lihat HPP/margin & user'}
+                  {form.role === 'maid' && 'Hanya bisa login di tablet kasir — tidak bisa akses dashboard'}
+                </p>
               </div>
               <div>
                 <label className="block text-sm font-medium text-slate-600 mb-1">
