@@ -159,6 +159,13 @@ RULES = {
         "updateRule": ADMIN_OR_STAFF,
         "deleteRule": ADMIN_ONLY,
     },
+    "users": {
+        "listRule":   ADMIN_ONLY,        # only admin can list all users
+        "viewRule":   AUTH_ANY,          # any auth can view own record
+        "createRule": ADMIN_ONLY,
+        "updateRule": ADMIN_ONLY,
+        "deleteRule": ADMIN_ONLY,
+    },
 }
 
 for col_name, rules in RULES.items():
