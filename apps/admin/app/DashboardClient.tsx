@@ -16,7 +16,35 @@ interface Order {
   expand?: { order_items_via_order?: OrderItem[] }
 }
 interface OrderItem { id: string; product_name: string; price: number; quantity: number }
+interface Recipe { product: string; ingredient: string; qty_needed: number }
+interface Ingredient { id: string; name: string; stock_qty: number; alert_qty: number; unit: string; cost_per_unit: number }
+interface Product { id: string; name: string }
 type Range = 'today' | 'week' | 'month' | 'year' | 'all'
+
+// Build HPP map: productName → cost per serving (IDR)
+function buildHppMap(
+  products: Product[],
+  recipes: Recipe[],
+  ingredients: Ingredient[]
+): Record<string, number> {
+  const ingrById: Record<string, Ingredient> = {}
+  for (const i of ingredients) ingrById[i.id] = i
+  const prodById: Record<string, string> = {}
+  for (const p of products) prodById[p.id] = p.name
+
+  const map: Record<string, number> = {}
+  for (const p of products) {
+    const lines = recipes.filter(r => r.product === p.id)
+    if (lines.length === 0) continue
+    let hpp = 0
+    for (const line of lines) {
+      const ingr = ingrById[line.ingredient]
+      if (ingr) hpp += line.qty_needed * ingr.cost_per_unit
+    }
+    map[p.name] = hpp
+  }
+  return map
+}
 
 function startOf(range: Range): Date {
   const d = new Date(); d.setHours(0, 0, 0, 0)
@@ -82,23 +110,25 @@ export default function DashboardClient({ token }: { token: string | null }) {
   })
   const [orders,       setOrders]       = useState<Order[]>([])
   const [productCount, setProductCount] = useState(0)
-  const [lowStock,     setLowStock]     = useState<{ id: string; name: string; stock_qty: number; alert_qty: number; unit: string }[]>([])
+  const [lowStock,     setLowStock]     = useState<Ingredient[]>([])
   const [loading,      setLoading]      = useState(true)
   const [range,        setRange]        = useState<Range>('today')
+  const [hppMap,       setHppMap]       = useState<Record<string, number>>({})
 
   useEffect(() => {
     Promise.all([
       pb.collection('orders').getFullList<Order>({
         filter: "status = 'paid'", sort: '-id', expand: 'order_items_via_order',
       }),
-      pb.collection('products').getFullList({ fields: 'id' }),
-      pb.collection('ingredients').getFullList<{ id: string; name: string; stock_qty: number; alert_qty: number; unit: string }>({
-        filter: 'alert_qty > 0',
-      }),
-    ]).then(([ords, prods, ingrs]) => {
+      pb.collection('products').getFullList<Product>({ fields: 'id,name' }),
+      pb.collection('ingredients').getFullList<Ingredient>({ filter: 'alert_qty > 0' }),
+      pb.collection('recipes').getFullList<Recipe>({ fields: 'product,ingredient,qty_needed' }),
+      pb.collection('ingredients').getFullList<Ingredient>({ fields: 'id,name,stock_qty,alert_qty,unit,cost_per_unit' }),
+    ]).then(([ords, prods, ingrAlert, recipes, allIngrs]) => {
       setOrders(ords)
       setProductCount(prods.length)
-      setLowStock(ingrs.filter(i => i.stock_qty <= i.alert_qty))
+      setLowStock(ingrAlert.filter(i => i.stock_qty <= i.alert_qty))
+      setHppMap(buildHppMap(prods, recipes, allIngrs))
       setLoading(false)
     })
   }, [])
@@ -113,6 +143,17 @@ export default function DashboardClient({ token }: { token: string | null }) {
   const omset    = filtered.reduce((s, o) => s + o.total, 0)
   const ordCount = filtered.length
   const avgOrder = ordCount > 0 ? omset / ordCount : 0
+
+  // HPP calculation for filtered period
+  const totalHpp = filtered.reduce((s, o) => {
+    for (const item of o.expand?.order_items_via_order ?? []) {
+      const hpp = hppMap[item.product_name] ?? 0
+      s += hpp * item.quantity
+    }
+    return s
+  }, 0)
+  const grossProfit = omset - totalHpp
+  const margin = omset > 0 ? (grossProfit / omset) * 100 : 0
 
   const chart7Day    = build7DayChart(orders)
   const chartMonthly = buildMonthlyChart(orders)
@@ -165,10 +206,10 @@ export default function DashboardClient({ token }: { token: string | null }) {
       {/* ── 4 stat cards — all driven by period filter ── */}
       <div className="grid grid-cols-4 gap-4">
         {[
-          { label: 'Revenue',        value: formatRupiah(omset),    icon: '💰' },
-          { label: 'Orders',         value: ordCount,               icon: '📋' },
-          { label: 'Avg Order Value',value: formatRupiah(avgOrder), icon: '🧾' },
-          { label: 'Total Products', value: productCount,           icon: '🛍️' },
+          { label: 'Revenue',        value: formatRupiah(omset),        icon: '💰' },
+          { label: 'Orders',         value: ordCount,                   icon: '📋' },
+          { label: 'Avg Order Value',value: formatRupiah(avgOrder),     icon: '🧾' },
+          { label: 'Total Products', value: productCount,               icon: '🛍️' },
         ].map(s => (
           <div key={s.label} className="bg-white rounded-xl p-5 border border-slate-100 shadow-sm">
             <div className="text-2xl mb-2">{s.icon}</div>
@@ -177,6 +218,29 @@ export default function DashboardClient({ token }: { token: string | null }) {
           </div>
         ))}
       </div>
+
+      {/* ── HPP / Margin cards ── */}
+      {omset > 0 && (
+        <div className="grid grid-cols-3 gap-4">
+          <div className="bg-white rounded-xl p-5 border border-slate-100 shadow-sm">
+            <div className="text-2xl mb-2">🏭</div>
+            <div className="text-2xl font-bold text-red-500">{formatRupiah(totalHpp)}</div>
+            <div className="text-sm text-slate-400 mt-1">Total HPP (Biaya Bahan)</div>
+          </div>
+          <div className="bg-white rounded-xl p-5 border border-slate-100 shadow-sm">
+            <div className="text-2xl mb-2">📈</div>
+            <div className="text-2xl font-bold text-green-600">{formatRupiah(grossProfit)}</div>
+            <div className="text-sm text-slate-400 mt-1">Laba Kotor</div>
+          </div>
+          <div className="bg-white rounded-xl p-5 border border-slate-100 shadow-sm">
+            <div className="text-2xl mb-2">💹</div>
+            <div className={`text-2xl font-bold ${margin >= 60 ? 'text-green-600' : margin >= 40 ? 'text-amber-500' : 'text-red-500'}`}>
+              {margin.toFixed(1)}%
+            </div>
+            <div className="text-sm text-slate-400 mt-1">Margin Kotor</div>
+          </div>
+        </div>
+      )}
 
       {/* ── Charts row ── */}
       <div className="grid grid-cols-2 gap-6">
@@ -233,17 +297,31 @@ export default function DashboardClient({ token }: { token: string | null }) {
                 <th className="text-left px-6 py-3 text-slate-500 font-medium">Product</th>
                 <th className="text-left px-6 py-3 text-slate-500 font-medium">Qty</th>
                 <th className="text-left px-6 py-3 text-slate-500 font-medium">Revenue</th>
+                <th className="text-left px-6 py-3 text-slate-500 font-medium">HPP</th>
+                <th className="text-left px-6 py-3 text-slate-500 font-medium">Margin</th>
               </tr>
             </thead>
             <tbody>
-              {productSales.map((p, i) => (
-                <tr key={p.name} className="border-b border-slate-50 hover:bg-slate-50">
-                  <td className="px-6 py-3 text-slate-400 text-xs">{i + 1}</td>
-                  <td className="px-6 py-3 font-medium text-slate-800">{p.name}</td>
-                  <td className="px-6 py-3 text-slate-500">{p.qty}</td>
-                  <td className="px-6 py-3 font-semibold text-indigo-600">{formatRupiah(p.revenue)}</td>
-                </tr>
-              ))}
+              {productSales.map((p, i) => {
+                const hpp     = (hppMap[p.name] ?? 0) * p.qty
+                const margin_ = p.revenue > 0 ? ((p.revenue - hpp) / p.revenue) * 100 : 0
+                return (
+                  <tr key={p.name} className="border-b border-slate-50 hover:bg-slate-50">
+                    <td className="px-6 py-3 text-slate-400 text-xs">{i + 1}</td>
+                    <td className="px-6 py-3 font-medium text-slate-800">{p.name}</td>
+                    <td className="px-6 py-3 text-slate-500">{p.qty}</td>
+                    <td className="px-6 py-3 font-semibold text-indigo-600">{formatRupiah(p.revenue)}</td>
+                    <td className="px-6 py-3 text-red-400 text-xs">{hpp > 0 ? formatRupiah(hpp) : '—'}</td>
+                    <td className="px-6 py-3 text-xs font-semibold">
+                      {hpp > 0 ? (
+                        <span className={margin_ >= 60 ? 'text-green-600' : margin_ >= 40 ? 'text-amber-500' : 'text-red-500'}>
+                          {margin_.toFixed(0)}%
+                        </span>
+                      ) : '—'}
+                    </td>
+                  </tr>
+                )
+              })}
             </tbody>
           </table>
           {productSales.length === 0 && (
