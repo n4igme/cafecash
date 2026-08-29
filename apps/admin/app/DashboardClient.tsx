@@ -165,9 +165,9 @@ export default function DashboardClient({ token }: { token: string | null }) {
     <div className="p-8 space-y-6">
 
       {/* ── Header + period filter ── */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-0 sm:justify-between">
         <h2 className="text-2xl font-bold text-slate-800">Dashboard</h2>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           {RANGES.map(r => (
             <button key={r.value} onClick={() => setRange(r.value)}
               className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
@@ -203,8 +203,8 @@ export default function DashboardClient({ token }: { token: string | null }) {
         </div>
       )}
 
-      {/* ── 4 stat cards — all driven by period filter ── */}
-      <div className="grid grid-cols-4 gap-4">
+      {/* ── 4 stat cards ── */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {[
           { label: 'Revenue',        value: formatRupiah(omset),        icon: '💰' },
           { label: 'Orders',         value: ordCount,                   icon: '📋' },
@@ -221,7 +221,7 @@ export default function DashboardClient({ token }: { token: string | null }) {
 
       {/* ── HPP / Margin cards ── */}
       {omset > 0 && (
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div className="bg-white rounded-xl p-5 border border-slate-100 shadow-sm">
             <div className="text-2xl mb-2">🏭</div>
             <div className="text-2xl font-bold text-red-500">{formatRupiah(totalHpp)}</div>
@@ -243,7 +243,7 @@ export default function DashboardClient({ token }: { token: string | null }) {
       )}
 
       {/* ── Charts row ── */}
-      <div className="grid grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
         {/* 7-day bar chart */}
         <div className="bg-white rounded-xl border border-slate-100 shadow-sm p-6">
@@ -283,7 +283,7 @@ export default function DashboardClient({ token }: { token: string | null }) {
       </div>
 
       {/* ── Product sales + top products ── */}
-      <div className="grid grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
         {/* Sales table */}
         <div className="bg-white rounded-xl border border-slate-100 shadow-sm overflow-hidden">
