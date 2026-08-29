@@ -1,6 +1,6 @@
 # CafeCash
 
-Self-hosted POS system for cafés — Android tablet cashier app + Next.js web admin + PocketBase backend, all connected over Tailscale VPN.
+Self-hosted POS system for cafés — Android tablet cashier app + Next.js web admin + PocketBase backend, connected over Tailscale VPN.
 
 ## Stack
 
@@ -19,7 +19,7 @@ Self-hosted POS system for cafés — Android tablet cashier app + Next.js web a
 cafecash/
 ├── apps/
 │   ├── tablet/                     # Expo Android APK (com.cafecash.pos)
-│   │   ├── app/                    # Screens: active-orders, pos, checkout
+│   │   ├── app/                    # Screens: login, active-orders, pos, checkout
 │   │   ├── lib/                    # PocketBase client, stock utils, format
 │   │   ├── store/                  # Zustand cart store
 │   │   ├── assets/                 # Icons, splash, QRIS placeholder
@@ -32,13 +32,15 @@ cafecash/
 ├── packages/
 │   └── types/                      # Shared TypeScript types
 ├── scripts/
-│   ├── create_collections.py       # One-shot PocketBase schema setup
-│   ├── create_stock_collections.py # Stock management collections setup
-│   ├── seed_coffeeshop.py          # Seed 38 realistic café products
+│   ├── setup.py                    # Full first-time setup (run once)
+│   ├── setup_rbac.py               # Apply RBAC collection rules
+│   ├── seed_coffeeshop.py          # Seed 38 café products
 │   ├── seed_recipes.py             # Seed ingredients + 90 recipe entries
-│   ├── set_stock.py                # Set initial stock (50 servings each)
-│   ├── upload_photos.py            # Upload product photos
-│   └── e2e_test.py                 # End-to-end API test (22 tests)
+│   ├── set_stock.py                # Set initial stock quantities
+│   ├── e2e_test.py                 # End-to-end API test (23 tests)
+│   ├── verify_security.py          # Security rules test (21 tests)
+│   └── verify_rbac.py             # RBAC roles test (23 tests)
+├── launchd/                        # macOS launchd plists (bare-metal alternative)
 ├── deploy.sh                       # One-command deploy (macOS/Linux)
 ├── deploy.ps1                      # One-command deploy (Windows PowerShell)
 ├── Dockerfile.pocketbase
@@ -68,7 +70,7 @@ cafecash/
 
 ```bash
 tailscale ip -4
-# e.g. 100.89.64.105
+# e.g. 100.85.162.13
 ```
 
 ### 2. Configure environment
@@ -106,18 +108,19 @@ docker compose up -d
 | PocketBase Admin UI | `http://localhost:8091/_/` |
 | Admin Dashboard | `http://localhost:3001` |
 
-### 6. First-time setup (run once)
+### 6. Create PocketBase superuser (once)
+
+```bash
+./pocketbase superuser create admin@luna.pos Admin@2026!
+```
+
+### 7. First-time setup (run once)
 
 ```bash
 PYTHONPATH="" python3 scripts/setup.py
 ```
 
-This single script handles everything:
-- Creates admin dashboard user (`admin@cafecash.pos`)
-- Creates all 8 collections
-- Seeds 38 café products
-- Seeds 27 ingredients + 90 recipe entries
-- Sets initial stock quantities
+Creates all users, collections, seeds products/ingredients/recipes, sets stock, applies RBAC rules.
 
 Configurable via environment variables:
 ```bash
@@ -125,11 +128,15 @@ PB_SUPERUSER_EMAIL=admin@yourdomain.com \
 PB_SUPERUSER_PASSWORD=yourpassword \
 ADMIN_USER_EMAIL=admin@cafecash.pos \
 ADMIN_USER_PASSWORD=yourpassword \
+STAFF_USER_EMAIL=staff@cafecash.pos \
+STAFF_USER_PASSWORD=yourpassword \
+MAID_USER_EMAIL=kasir1@cafecash.pos \
+MAID_USER_PASSWORD=yourpassword \
 STORE_NAME="Your Café" \
 PYTHONPATH="" python3 scripts/setup.py
 ```
 
-### 7. Build + install tablet APK
+### 8. Build + install tablet APK
 
 ```bash
 cd apps/tablet
@@ -141,14 +148,11 @@ bash scripts/build-debug.sh           # debug APK (needs Metro)
 
 ## Deployment
 
-Use `deploy.sh` (macOS/Linux) or `deploy.ps1` (Windows) for one-command deployment:
-
 ```bash
 # macOS/Linux
 ./deploy.sh            # build + deploy admin Docker + tablet APK
 ./deploy.sh admin      # admin Docker only
 ./deploy.sh apk        # release APK only
-./deploy.sh apk debug  # debug APK
 
 # Windows (PowerShell)
 .\deploy.ps1
@@ -158,114 +162,119 @@ Use `deploy.sh` (macOS/Linux) or `deploy.ps1` (Windows) for one-command deployme
 
 **When Tailscale IP changes:**
 ```bash
-sed -i '' 's/OLD_IP/NEW_IP/g' apps/tablet/.env apps/admin/.env.local
+NEW_IP=$(tailscale ip -4)
+sed -i '' "s/100\.[0-9]*\.[0-9]*\.[0-9]*/$NEW_IP/g" \
+  apps/tablet/.env apps/admin/.env.local
 ./deploy.sh
 ```
+
+## RBAC
+
+Three roles with different access levels:
+
+| Capability | Admin | Staff | Kasir (Maid) |
+|---|---|---|---|
+| Login dashboard | ✅ | ✅ | ❌ |
+| View reports + HPP/margin | ✅ | ❌ | ❌ |
+| Manage products | ✅ create/edit/delete | ✅ create/edit only | ❌ |
+| View orders | ✅ | ✅ | ❌ (via POS only) |
+| Refund orders | ✅ | ❌ | ❌ |
+| Manage users | ✅ | ❌ | ❌ |
+| View stock/ingredients | ✅ | ✅ | ❌ |
+| Manage stock | ✅ | ✅ | ❌ |
+| Login tablet (POS) | ❌ | ❌ | ✅ |
+| Create/manage orders | ❌ | ❌ | ✅ |
 
 ## Admin Dashboard
 
 | Page | Features |
 |---|---|
-| 📊 Dashboard | Revenue, orders, avg order value, period filter (Today/Week/Month/Year/All), 7-day chart, monthly trend, sales by product, **HPP + margin per product**, gross profit, low stock alert |
-| 🛍️ Products | CRUD, image upload, availability toggle, search, category filter, sortable columns, **stock badge (Out of stock / Low)** |
-| 📋 Orders | Full history, search, sort, status filter, cancel, refund, payment slip preview |
-| 👤 Users | Add/edit/delete admin users, change passwords |
-| ⚙️ Settings | Store name, logo upload, QRIS image upload |
-| 🧪 Ingredients | Raw materials CRUD, stock levels, alert thresholds, cost per unit |
-| 📋 Recipes | Map products → ingredients + qty per serving (drives auto stock deduction) |
-| 📦 Stock In | Record purchases, auto-updates ingredient stock, purchase history |
+| 📊 Dashboard | Revenue, orders, period filter, charts, HPP + margin (admin only) |
+| 🛍️ Products | CRUD, image upload, availability toggle, search, category filter |
+| 📋 Orders | Full history, search, sort, status filter, cancel, refund |
+| 👤 Users | Add/edit/delete users, role selector (admin/staff/maid) |
+| ⚙️ Settings | Store name, logo upload, QRIS image |
+| 🧪 Ingredients | Raw materials CRUD, stock levels, alert thresholds |
+| 📋 Recipes | Map products → ingredients for stock deduction |
+| 📦 Stock In | Record purchases, auto-updates stock |
 | ⚡ Adjustments | Record waste, spoilage, manual corrections |
 
-**Language toggle:** 🇮🇩 ID / 🇬🇧 EN button in sidebar footer. Default: Indonesian.
+**Language toggle:** 🇮🇩 ID / 🇬🇧 EN in sidebar footer. Default: Indonesian.
 
 ## Tablet POS
 
 | Feature | Detail |
 |---|---|
-| Active orders | Home screen lists all open orders — tap to reopen and edit |
-| Product grid | 3-column, category filters, **grey out when ingredient stock = 0** |
-| Order flow | New Order → name/table → add items → Save Order → Proceed to Payment |
-| Order editing | Reopen saved order — add/remove items (stock restored → re-deducted) |
-| Stock deduction | Auto-deducts ingredients on Save Order via recipes |
-| Cancel order | Restores all ingredient stock automatically |
-| Payment methods | QRIS (photo required), Cash (no photo), Split Cash+QRIS (photo + note) |
-| Payment slip | Camera or gallery photo upload, stored in PocketBase, visible in admin |
+| Login | Per-kasir login — each cashier uses their own maid account |
+| Active orders | Home screen lists all open orders |
+| Product grid | 3-column, category filters, grey out when stock = 0 |
+| Order flow | Login → New Order → Add Items → Save → Pay |
+| Stock deduction | Auto-deducts on Save Order via recipes |
+| Cancel | Restores stock automatically |
+| Payment | QRIS (photo required), Cash, Split (photo + note) |
+| Logout | Button in header — returns to login screen |
 
 ## Order Lifecycle
 
 ```
-New Order (open)
-    ↓ add/edit items (stock deducted on each save)
-Save Order (open, stock deducted)
+Login (maid account)
     ↓
-Proceed to Payment
+New Order → enter customer name/table
     ↓
-Paid ✓ (stock unchanged — already deducted at save)
-    or
-Cancelled (stock restored automatically)
-    or
-Refunded (admin only, from Orders page)
+Add items (stock deducted on Save)
+    ↓
+Paid ✓  or  Cancelled (stock restored)  or  Refunded (admin)
 ```
 
 ## Stock Management
 
 ```
-Stock In (purchases)  → adds stock
-Recipes               → defines what gets consumed per order item
-Save Order            → auto-deducts ingredients per recipe
-Cancel Order          → auto-restores ingredients per recipe
-Adjustments           → manual waste / spoilage / correction
-```
-
-HPP (Harga Pokok Penjualan) per product is calculated from `cost_per_unit` in Ingredients × qty per recipe. Update ingredient costs to keep HPP accurate.
-
-## RBAC
-
-| | Tablet (anonymous) | Admin (authenticated) |
-|---|---|---|
-| `products` | Read | Full CRUD |
-| `orders` | Create, Read, Update | Full CRUD |
-| `order_items` | Create, Read, Delete | Full CRUD |
-| `settings` | Read | Full CRUD |
-| `ingredients` | — | Full CRUD |
-| `recipes` | Read | Full CRUD |
-| `stock_purchases` | — | Full CRUD |
-| `stock_adjustments` | — | Full CRUD |
-
-Tailscale VPN is the network security boundary — only Tailscale devices can reach the backend.
-
-## Bare-metal (without Docker)
-
-```bash
-./start.sh              # starts PocketBase :8091 + Next.js admin :3001
-
-# Install as macOS launchd services (auto-start on reboot)
-./install-services.sh
-./install-services.sh status
-./install-services.sh stop
+Stock In       → adds stock (pembelian bahan baku)
+Recipes        → defines what gets consumed per order
+Save Order     → auto-deducts via recipes
+Cancel Order   → auto-restores via recipes
+Adjustments    → manual waste / spoilage / correction
+HPP            → calculated from cost_per_unit × recipe qty
 ```
 
 ## Testing
 
 ```bash
-# Run full end-to-end test (22 tests)
+# End-to-end flow (23 tests)
 PYTHONPATH="" python3 scripts/e2e_test.py
-```
 
-Covers: auth, products, ingredients, order create/edit/pay/cancel, stock deduction/restore.
+# Security rules (21 tests)
+PYTHONPATH="" python3 scripts/verify_security.py
+
+# RBAC roles (23 tests)
+PYTHONPATH="" python3 scripts/verify_rbac.py
+```
 
 ## Credentials
 
 > ⚠️ **Never commit real credentials to version control.**
 
-After setup, store credentials in `.credentials` (gitignored):
+After setup, credentials are in `.credentials` (gitignored):
 
 ```bash
 cp .credentials.example .credentials
 # Fill in your actual passwords
 ```
 
-| Role | Access |
-|---|---|
-| PB Superuser | PocketBase `/_/` — schema, users, system config |
-| Admin user | Full access to admin dashboard |
+| Role | Email | Default Password | Access |
+|---|---|---|---|
+| PB Superuser | `admin@luna.pos` | set during superuser create | PocketBase `/_/` |
+| Admin | `admin@cafecash.pos` | `CafeCash@2026!` | Dashboard — full |
+| Staff | `staff@cafecash.pos` | `Staff@2026!` | Dashboard — operational |
+| Kasir | `kasir1@cafecash.pos` | `Kasir@2026!` | Tablet POS only |
+
+> Change default passwords after first login.
+
+## Bare-metal (without Docker)
+
+```bash
+./start.sh              # starts PocketBase :8091 + Next.js admin :3001
+
+# Install as macOS launchd services
+./install-services.sh
+```

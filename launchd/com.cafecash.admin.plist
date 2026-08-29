@@ -4,7 +4,7 @@
 <plist version="1.0">
 <dict>
   <key>Label</key>
-  <string>com.luna.admin</string>
+  <string>com.cafecash.admin</string>
 
   <key>ProgramArguments</key>
   <array>

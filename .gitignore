@@ -5,31 +5,25 @@ node_modules/
 .next/
 .expo/
 dist/
-
 # PocketBase runtime
 pocketbase
 pb_data/
 pb_migrations/
-
 # Logs & backups
 logs/
 backups/
-
 # Env files (keep examples)
 .env
 .env.local
 .env.*.local
-
 # Credentials (never commit)
 .credentials
-
 Thumbs.db
-
 # Debug scripts (dev only)
 scripts/debug_dashboard.py
-
 # Android build outputs
 apps/tablet/android/app/build/
 apps/tablet/android/.gradle/
 apps/tablet/android/build/
 apps/tablet/android/app/release/
+scripts/.tablet_credentials

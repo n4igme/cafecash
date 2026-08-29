@@ -10,9 +10,9 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")" && pwd)"
 LAUNCHD_DIR="$HOME/Library/LaunchAgents"
 PLISTS=(
-  com.luna.pocketbase
-  com.luna.admin
-  com.luna.backup
+  com.cafecash.pocketbase
+  com.cafecash.admin
+  com.cafecash.backup
 )
 
 # ── helpers ──────────────────────────────────────────────────────────────────
