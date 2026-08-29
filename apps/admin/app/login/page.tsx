@@ -1,6 +1,7 @@
 import { cookies } from 'next/headers'
 import { t } from '../../lib/i18n'
 import type { Lang } from '../../lib/i18n'
+import PasswordInput from '../components/PasswordInput'
 
 export default async function LoginPage({
   searchParams,
@@ -37,17 +38,10 @@ export default async function LoginPage({
               />
             </div>
 
-            <div>
-              <label htmlFor="password" className="block text-sm font-medium text-slate-600 mb-1">
-                {t('login.password', lang)}
-              </label>
-              <input
-                id="password" name="password" type="password"
-                autoComplete="current-password" required placeholder="••••••••"
-                className="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm
-                           focus:outline-none focus:ring-2 focus:ring-indigo-400 transition"
-              />
-            </div>
+            <PasswordInput
+              label={t('login.password', lang)}
+              placeholder="••••••••"
+            />
 
             {error && (
               <div className="bg-red-50 border border-red-100 text-red-600 text-sm rounded-lg px-4 py-3">
