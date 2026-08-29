@@ -24,7 +24,10 @@ export default function UsersClient({ token }: { token: string | null }) {
 
   const load = async () => {
     setLoading(true)
-    const data = await pb.collection('users').getFullList<User>({ sort: 'created' })
+    const data = await pb.collection('users').getFullList<User>({
+      sort: 'created',
+      filter: "email != 'tablet@cafecash.pos'",  // hide service accounts
+    })
     setUsers(data); setLoading(false)
   }
 
