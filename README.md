@@ -109,25 +109,25 @@ docker compose up -d
 ### 6. First-time setup (run once)
 
 ```bash
-# 1. Create PocketBase superuser
-./pocketbase superuser create admin@yourdomain.com <strong-password>
-
-# 2. Create all collections (products, orders, order_items, settings, stock)
-PYTHONPATH="" python3 scripts/create_collections.py
-PYTHONPATH="" python3 scripts/create_stock_collections.py
-
-# 3. Seed products, ingredients, recipes
-PYTHONPATH="" python3 scripts/seed_coffeeshop.py
-PYTHONPATH="" python3 scripts/seed_recipes.py
-
-# 4. Set initial stock quantities (50 servings each)
-PYTHONPATH="" python3 scripts/set_stock.py
-
-# 5. Create first admin user
-# Open http://localhost:8091/_/ → Collections → users → + New record
+PYTHONPATH="" python3 scripts/setup.py
 ```
 
-Then open `http://localhost:3001` → sign in → **Settings** → set store name, upload logo and QRIS image.
+This single script handles everything:
+- Creates admin dashboard user (`admin@cafecash.pos`)
+- Creates all 8 collections
+- Seeds 38 café products
+- Seeds 27 ingredients + 90 recipe entries
+- Sets initial stock quantities
+
+Configurable via environment variables:
+```bash
+PB_SUPERUSER_EMAIL=admin@yourdomain.com \
+PB_SUPERUSER_PASSWORD=yourpassword \
+ADMIN_USER_EMAIL=admin@cafecash.pos \
+ADMIN_USER_PASSWORD=yourpassword \
+STORE_NAME="Your Café" \
+PYTHONPATH="" python3 scripts/setup.py
+```
 
 ### 7. Build + install tablet APK
 
